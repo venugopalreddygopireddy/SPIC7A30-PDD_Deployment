@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+pandas
+scikit-learn
+tensorflow-cpu
+numpy
+torch
+torchvision
+torchaudio
+joblib
+sqlalchemy
+psycopg2-binary
