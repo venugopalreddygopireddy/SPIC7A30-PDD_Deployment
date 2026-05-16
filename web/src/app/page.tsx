@@ -1,13 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Activity, 
   Brain, 
   Heart, 
   Wind, 
   History, 
-  MessageSquare, 
   User, 
   Settings, 
   Bell, 
@@ -15,14 +14,14 @@ import {
   ArrowUpRight,
   ShieldCheck,
   TrendingDown,
-  Calendar
+  Calendar,
+  LucideIcon
 } from 'lucide-react';
 
 // --- Dashboard Layout Component ---
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('home');
-  const [stressScore, setStressScore] = useState(42);
-  const [stressLevel, setStressLevel] = useState('Moderate');
+  const stressScore = 42;
 
   return (
     <div className="min-h-screen bg-[#050810] text-slate-200 font-sans flex">
@@ -36,14 +35,14 @@ export default function Dashboard() {
         </div>
 
         <nav className="flex-1 px-4 space-y-2">
-          <NavItem icon={<Activity />} label="Dashboard" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
-          <NavItem icon={<Brain />} label="AI Chat" active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} />
-          <NavItem icon={<History />} label="History" active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
-          <NavItem icon={<Wind />} label="Exercises" active={activeTab === 'exercises'} onClick={() => setActiveTab('exercises')} />
+          <NavItem Icon={Activity} label="Dashboard" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
+          <NavItem Icon={Brain} label="AI Chat" active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} />
+          <NavItem Icon={History} label="History" active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
+          <NavItem Icon={Wind} label="Exercises" active={activeTab === 'exercises'} onClick={() => setActiveTab('exercises')} />
         </nav>
 
         <div className="p-6 border-t border-slate-800/50 space-y-4">
-          <NavItem icon={<Settings />} label="Settings" />
+          <NavItem Icon={Settings} label="Settings" />
           <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/30">
             <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
               <User size={20} />
@@ -121,21 +120,21 @@ export default function Dashboard() {
               title="Sleep Quality" 
               value="8.2h" 
               desc="Normal range" 
-              icon={<Calendar className="text-cyan-400" />} 
+              Icon={Calendar} 
               color="cyan"
             />
             <StatCard 
               title="Heart Rate" 
               value="72 bpm" 
               desc="Resting avg" 
-              icon={<Heart className="text-rose-400" />} 
+              Icon={Heart} 
               color="rose"
             />
             <StatCard 
               title="Cognitive Load" 
               value="Low" 
               desc="Excellent focus" 
-              icon={<Brain className="text-purple-400" />} 
+              Icon={Brain} 
               color="purple"
             />
           </div>
@@ -160,7 +159,14 @@ export default function Dashboard() {
 
 // --- Helper Components ---
 
-function NavItem({ icon, label, active = false, onClick = () => {} }: { icon: React.ReactNode, label: string, active?: boolean, onClick?: () => void }) {
+interface NavItemProps {
+  Icon: LucideIcon;
+  label: string;
+  active?: boolean;
+  onClick?: () => void;
+}
+
+function NavItem({ Icon, label, active = false, onClick = () => {} }: NavItemProps) {
   return (
     <button 
       onClick={onClick}
@@ -170,14 +176,22 @@ function NavItem({ icon, label, active = false, onClick = () => {} }: { icon: Re
           : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'
       }`}
     >
-      {React.cloneElement(icon as React.ReactElement, { size: 20 })}
+      <Icon size={20} />
       <span className="font-medium text-sm">{label}</span>
     </button>
   );
 }
 
-function StatCard({ title, value, desc, icon, color }: { title: string, value: string, desc: string, icon: React.ReactNode, color: string }) {
-  const colors: Record<string, string> = {
+interface StatCardProps {
+  title: string;
+  value: string;
+  desc: string;
+  Icon: LucideIcon;
+  color: 'cyan' | 'rose' | 'purple' | 'emerald';
+}
+
+function StatCard({ title, value, desc, Icon, color }: StatCardProps) {
+  const colors = {
     cyan: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400',
     rose: 'bg-rose-500/10 border-rose-500/20 text-rose-400',
     purple: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
@@ -187,7 +201,7 @@ function StatCard({ title, value, desc, icon, color }: { title: string, value: s
   return (
     <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl hover:border-slate-700 transition-colors group">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 ${colors[color]}`}>
-        {icon}
+        <Icon size={20} />
       </div>
       <p className="text-slate-500 text-sm font-medium">{title}</p>
       <h4 className="text-2xl font-bold mt-1 text-white">{value}</h4>
@@ -196,8 +210,14 @@ function StatCard({ title, value, desc, icon, color }: { title: string, value: s
   );
 }
 
-function HistoryItem({ date, score, status }: { date: string, score: number, status: string }) {
-  const statusColors: Record<string, string> = {
+interface HistoryItemProps {
+  date: string;
+  score: number;
+  status: 'Low' | 'Moderate' | 'High';
+}
+
+function HistoryItem({ date, score, status }: HistoryItemProps) {
+  const statusColors = {
     Low: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
     Moderate: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
     High: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
