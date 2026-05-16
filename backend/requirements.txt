@@ -4,11 +4,8 @@ python-dotenv
 pydantic
 pandas
 scikit-learn
-tensorflow-cpu
+onnxruntime
 numpy
-torch
-torchvision
-torchaudio
 joblib
 sqlalchemy
-psycopg2-binary
+psycopg2-binary

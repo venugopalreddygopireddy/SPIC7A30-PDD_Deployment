@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from tensorflow.keras.models import load_model
+import onnxruntime as ort
 import numpy as np
 import pandas as pd
 import joblib
@@ -38,29 +38,25 @@ app.add_middleware(
 )
 
 # ============================================
-# LOAD AI MODEL
+# LOAD AI MODEL (ONNX)
 # ============================================
 
-MODEL_PATH = "stress_model.h5"
+MODEL_PATH = "stress_model.onnx"
 ENCODER_PATH = "encoders.pkl"
 SCALER_PATH = "scaler.pkl"
 TARGET_ENCODER_PATH = "target_encoder.pkl"
 
 if os.path.exists(MODEL_PATH):
-
-    model = load_model(MODEL_PATH)
-
+    # Load ONNX session
+    session = ort.InferenceSession(MODEL_PATH)
+    input_name = session.get_inputs()[0].name
+    
     label_encoders = joblib.load(ENCODER_PATH)
-
     scaler = joblib.load(SCALER_PATH)
-
     target_encoder = joblib.load(TARGET_ENCODER_PATH)
-
-    print("AI Model Loaded Successfully")
-
+    print("AI ONNX Model Loaded Successfully")
 else:
-
-    print("WARNING: AI model files not found")
+    print(f"WARNING: AI model file {MODEL_PATH} not found")
 
 
 # ============================================
@@ -204,10 +200,11 @@ def analyze_stress(
     scaled_input = scaler.transform(df)
 
     # ========================================
-    # PREDICTION
+    # PREDICTION (ONNX)
     # ========================================
 
-    prediction = model.predict(scaled_input)
+    ort_inputs = {input_name: scaled_input.astype(np.float32)}
+    prediction = session.run(None, ort_inputs)[0]
 
     predicted_class = np.argmax(prediction)
 
