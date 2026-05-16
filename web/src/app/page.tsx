@@ -1,6 +1,5 @@
-"use client";
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import api, { StressCheckInResponse, getHistory } from '@/lib/api';
 import { 
   Activity, 
   Brain, 
@@ -15,13 +14,45 @@ import {
   ShieldCheck,
   TrendingDown,
   Calendar,
-  LucideIcon
+  LucideIcon,
+  Loader2
 } from 'lucide-react';
 
 // --- Dashboard Layout Component ---
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('home');
-  const stressScore = 42;
+  const [history, setHistory] = useState<StressCheckInResponse[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setLoading(true);
+        const data = await getHistory();
+        setHistory(data);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to fetch history:", err);
+        setError("Could not connect to backend");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchData();
+  }, []);
+
+  const latestCheckIn = history[0];
+  const stressScore = latestCheckIn?.score ?? 0;
+  const stressLevel = latestCheckIn?.stress_level ?? 'No Data';
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#050810] flex items-center justify-center text-emerald-400">
+        <Loader2 className="animate-spin mr-2" /> Initializing Sanctuary...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#050810] text-slate-200 font-sans flex">
@@ -146,9 +177,21 @@ export default function Dashboard() {
               <button className="text-sm text-emerald-400 font-medium hover:underline">View All</button>
             </div>
             <div className="space-y-4">
-              <HistoryItem date="May 12" score={42} status="Moderate" />
-              <HistoryItem date="May 11" score={68} status="High" />
-              <HistoryItem date="May 10" score={31} status="Low" />
+              {history.length > 0 ? (
+                history.map((item) => (
+                  <HistoryItem 
+                    key={item.id} 
+                    date={new Date(item.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} 
+                    score={item.score} 
+                    status={item.stress_level as any} 
+                  />
+                ))
+              ) : (
+                <div className="text-center py-12 text-slate-500">
+                  <Activity className="mx-auto mb-4 opacity-20" size={48} />
+                  <p>No health records found yet. Start your first check-in!</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
