@@ -11,7 +11,7 @@ services:
           name: cortisense-db
           property: connectionString
       - key: PYTHON_VERSION
-        value: 3.9.0
+        value: 3.11.6
 
 databases:
   - name: cortisense-db

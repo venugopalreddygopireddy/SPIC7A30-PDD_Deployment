@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from tensorflow.keras.models import load_model
 import numpy as np
@@ -26,6 +27,15 @@ print(models.Base.metadata.tables.keys())
 # ============================================
 
 app = FastAPI(title="CortiSense AI Backend")
+
+# Add CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ============================================
 # LOAD AI MODEL
