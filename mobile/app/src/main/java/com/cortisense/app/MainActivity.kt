@@ -1857,6 +1857,7 @@ fun CortiSenseScreen(
                                     selected = selectedTab == label,
                                     onClick = {
                                         if (label == "Check-in") {
+                                            viewModel.initializeCheckInForm()
                                             navController.navigate("dailyCheckin")
                                         } else if (selectedTab != label) {
                                             tabBackStack.add(selectedTab)
@@ -2298,7 +2299,10 @@ fun HomeScreen(
 
             // Main Action Button
             Button(
-                onClick = { navController.navigate("dailyCheckin") },
+                onClick = { 
+                    viewModel.initializeCheckInForm()
+                    navController.navigate("dailyCheckin") 
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(64.dp),

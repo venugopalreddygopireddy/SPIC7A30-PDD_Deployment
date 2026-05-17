@@ -261,6 +261,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 updateDashboardMetrics(it)
             }
         }
+        
+        viewModelScope.launch {
+            clinicalHistory.collect { checkIns ->
+                if (checkIns.isNotEmpty()) {
+                    val latest = checkIns.first()
+                    // Dynamically set UI stats based on the latest real data
+                    sleepHours = "${latest.sleepDuration} hrs"
+                    
+                    // Since heart rate isn't directly input, we dynamically simulate it based on stress score (higher stress = higher HR)
+                    val calculatedHr = 65 + (latest.score / 2)
+                    heartRate = "$calculatedHr bpm"
+                    
+                    // Dynamic wellness scores based on AI stress evaluation
+                    cognitiveScore = (100 - (latest.score * 0.9)).toInt().coerceIn(0, 100)
+                    emotionalScore = (100 - (latest.score * 1.2)).toInt().coerceIn(0, 100)
+                    physicalScore = (100 - (latest.score * 0.8)).toInt().coerceIn(0, 100)
+                    
+                    // Update today's sleep for the main dashboard card
+                    val hours = latest.sleepDuration.toInt()
+                    val minutes = ((latest.sleepDuration - hours) * 60).toInt()
+                    _todaySleepDuration.value = "${hours}h ${minutes}m"
+                }
+            }
+        }
     }
 
     private fun updateDashboardMetrics(records: List<StressRecord>) {
@@ -443,6 +467,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         quizAnswers = List(9) { -1 }
         ventText = ""
         reasons = emptyList()
+    }
+
+    fun initializeCheckInForm() {
+        viewModelScope.launch {
+            val latest = checkInRepository.allCheckIns.value.firstOrNull()
+            if (latest != null) {
+                checkInAge = latest.age.toString()
+                checkInGender = latest.gender
+                checkInOccupation = latest.occupation
+                checkInMaritalStatus = latest.maritalStatus
+                checkInSleepDuration = latest.sleepDuration
+                checkInSleepQuality = latest.sleepQuality
+                checkInWakeUpTime = latest.wakeUpTime
+                checkInBedTime = latest.bedTime
+                checkInPhysicalActivity = latest.physicalActivity
+                checkInScreenTime = latest.screenTime
+                checkInCaffeineIntake = latest.caffeineIntake
+                checkInAlcoholIntake = latest.alcoholIntake
+                checkInSmokingHabit = latest.smokingHabit
+                checkInWorkHours = latest.workHours
+                checkInTravelTime = latest.travelTime
+                checkInSocialInteractions = latest.socialInteractions
+                checkInWorkload = latest.workload
+                checkInMeditationPractice = latest.meditationPractice
+                checkInExerciseType = latest.exerciseType
+                checkInBloodPressure = latest.bloodPressure
+                checkInBloodSugarLevel = latest.bloodSugarLevel
+            } else {
+                checkInAge = userAge.value.ifEmpty { "25" }
+                checkInGender = userGender.value.ifEmpty { "Male" }
+            }
+        }
     }
 
     // --- Analysis Logic ---
