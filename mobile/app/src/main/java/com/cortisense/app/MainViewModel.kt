@@ -471,9 +471,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun initializeCheckInForm() {
         viewModelScope.launch {
-            val latest = checkInRepository.allCheckIns.value.firstOrNull()
+            val latest = kotlinx.coroutines.flow.firstOrNull(checkInRepository.allCheckIns)?.firstOrNull()
             if (latest != null) {
-                checkInAge = latest.age.toString()
                 checkInGender = latest.gender
                 checkInOccupation = latest.occupation
                 checkInMaritalStatus = latest.maritalStatus
