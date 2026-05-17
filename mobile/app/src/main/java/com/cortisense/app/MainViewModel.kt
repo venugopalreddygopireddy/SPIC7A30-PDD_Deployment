@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
@@ -471,8 +472,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun initializeCheckInForm() {
         viewModelScope.launch {
-            val latest = kotlinx.coroutines.flow.firstOrNull(checkInRepository.allCheckIns)?.firstOrNull()
+            val allList = checkInRepository.allCheckIns.firstOrNull() ?: emptyList()
+            val latest = allList.firstOrNull()
             if (latest != null) {
+                checkInAge = latest.age.toString()
                 checkInGender = latest.gender
                 checkInOccupation = latest.occupation
                 checkInMaritalStatus = latest.maritalStatus
