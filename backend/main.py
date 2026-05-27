@@ -373,23 +373,3 @@ def read_checkin(
         )
 
     return db_checkin
-
-
-# ============================================
-# TEMPORARY DEBUG API
-# ============================================
-
-@app.get("/debug/checkins")
-def debug_checkins(db: Session = Depends(get_db)):
-    """Temporary endpoint to verify PostgreSQL contents directly."""
-    recent_checkins = db.query(models.StressCheckIn).order_by(models.StressCheckIn.timestamp.desc()).limit(10).all()
-    
-    return [
-        {
-            "id": c.id,
-            "name": "User",  # 'name' column does not exist in models.StressCheckIn
-            "stress_level": c.stress_level,
-            "created_at": c.timestamp
-        }
-        for c in recent_checkins
-    ]
