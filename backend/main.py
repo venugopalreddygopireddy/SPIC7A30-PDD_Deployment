@@ -26,6 +26,23 @@ try:
         conn.execute(text("SELECT 1"))
         print("PostgreSQL Connected Successfully")
         
+        # Log active database connection details (mask password)
+        raw_url = str(engine.url)
+        masked_url = raw_url
+        if ':' in raw_url and '@' in raw_url:
+            parts = raw_url.split('@')
+            auth_parts = parts[0].split(':')
+            if len(auth_parts) >= 3:
+                masked_url = f"{auth_parts[0]}:{auth_parts[1]}:****@{parts[1]}"
+        
+        print(f"--- DATABASE CONNECTION INFO ---")
+        print(f"URL: {masked_url}")
+        print(f"Host: {engine.url.host}")
+        print(f"Database Name: {engine.url.database}")
+        print(f"Schema: public (default)")
+        print(f"Active Table: stress_checkins")
+        print(f"--------------------------------")
+        
         # Perform lightweight migration to add any missing columns (e.g. the 25 new fields)
         inspector = Inspector.from_engine(engine)
         if 'stress_checkins' in inspector.get_table_names():
@@ -291,7 +308,11 @@ def analyze_stress(
             data,
             analysis_result
         )
-        print("Check-in saved successfully to PostgreSQL")
+        
+        from sqlalchemy import text
+        row_count = db.execute(text("SELECT COUNT(*) FROM stress_checkins")).scalar()
+        print(f"Check-in saved successfully to PostgreSQL. Current row count in stress_checkins: {row_count}")
+        
     except Exception as e:
         print("Database Save Error:", e)
         db.rollback()
