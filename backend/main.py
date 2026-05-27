@@ -15,11 +15,8 @@ import crud
 
 from database import engine, get_db
 
-# ============================================
-# CREATE DATABASE TABLES
-# ============================================
-
 from sqlalchemy import text
+from sqlalchemy.engine.reflection import Inspector
 
 models.Base.metadata.create_all(bind=engine)
 print(models.Base.metadata.tables.keys())
@@ -27,7 +24,26 @@ print(models.Base.metadata.tables.keys())
 try:
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
-    print("PostgreSQL Connected Successfully")
+        print("PostgreSQL Connected Successfully")
+        
+        # Perform lightweight migration to add any missing columns (e.g. the 25 new fields)
+        inspector = Inspector.from_engine(engine)
+        if 'stress_checkins' in inspector.get_table_names():
+            columns = [col['name'] for col in inspector.get_columns('stress_checkins')]
+            
+            for column in models.StressCheckIn.__table__.columns:
+                if column.name not in columns:
+                    try:
+                        col_type = column.type.compile(engine.dialect)
+                        conn.execute(text(f"ALTER TABLE stress_checkins ADD COLUMN {column.name} {col_type}"))
+                        print(f"Added missing column: {column.name}")
+                    except Exception as col_e:
+                        print(f"Failed to add column {column.name}: {col_e}")
+            
+            try:
+                conn.commit()
+            except AttributeError:
+                pass # SQLAlchemy 1.4 connection doesn't always need explicit commit like 2.0
 except Exception as e:
     print(f"Error connecting to PostgreSQL: {e}")
 
@@ -219,9 +235,9 @@ def analyze_stress(
 
     confidence = float(np.max(prediction))
 
-    stress_level = target_encoder.inverse_transform(
+    stress_level = str(target_encoder.inverse_transform(
         [predicted_class]
-    )[0]
+    )[0])
 
     # ========================================
     # RECOMMENDATIONS
@@ -270,18 +286,15 @@ def analyze_stress(
     # ========================================
 
     try:
-
         crud.create_stress_checkin(
             db,
             data,
             analysis_result
         )
-
-        print("Check-in saved successfully")
-
+        print("Check-in saved successfully to PostgreSQL")
     except Exception as e:
-
         print("Database Save Error:", e)
+        db.rollback()
 
     # ========================================
     # RETURN RESPONSE
