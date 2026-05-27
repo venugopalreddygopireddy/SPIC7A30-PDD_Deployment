@@ -1,6 +1,7 @@
 package com.cortisense.app
 
 import android.app.Application
+import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +47,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // --- Persistent States from PreferenceManager ---
     private val _isDarkTheme = MutableStateFlow(false)
     val isDarkTheme = _isDarkTheme.asStateFlow()
+
+    private val _themeMode = MutableStateFlow("light")
+    val themeMode = _themeMode.asStateFlow()
 
     private val _language = MutableStateFlow("en")
     val language = _language.asStateFlow()
@@ -97,6 +101,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _userCoins = MutableStateFlow("0")
     val userCoins = _userCoins.asStateFlow()
+    
+    private val _completedTasks = MutableStateFlow<Set<String>>(emptySet())
+    val completedTasks = _completedTasks.asStateFlow()
 
     // --- Runtime UI States ---
     var currentUserEmail by mutableStateOf("")
@@ -140,6 +147,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _weeklyHistory = MutableStateFlow<List<StressRecord>>(emptyList())
     val weeklyHistory = _weeklyHistory.asStateFlow()
+
+    private val _monthlyHistory = MutableStateFlow<List<StressRecord>>(emptyList())
+    val monthlyHistory = _monthlyHistory.asStateFlow()
 
     private val _selectedRecord = MutableStateFlow<StressRecord?>(null)
     val selectedRecord = _selectedRecord.asStateFlow()
@@ -205,6 +215,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch {
             launch { preferenceManager.isDarkTheme.collect { _isDarkTheme.value = it } }
+            launch { preferenceManager.themeMode.collect { _themeMode.value = it } }
             launch { preferenceManager.language.collect { _language.value = it } }
             launch { preferenceManager.isUserRegistered.collect { _isUserRegistered.value = it } }
             launch { preferenceManager.isProfileCreated.collect { _isProfileCreated.value = it } }
@@ -229,6 +240,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             launch { preferenceManager.currentStreak.collect { _currentStreak.value = it } }
             launch { preferenceManager.longestStreak.collect { _longestStreak.value = it } }
             launch { preferenceManager.totalCheckins.collect { _totalCheckins.value = it } }
+            launch { preferenceManager.lastCheckinDate.collect { _lastCheckinDate.value = it } }
             launch { preferenceManager.isPremium.collect { _isPremium.value = it } }
             launch { preferenceManager.userCoins.collect { _userCoins.value = it } }
             launch { preferenceManager.isSleepTracking.collect { _isSleepTracking.value = it } }
@@ -242,6 +254,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 database.sleepDao().getAllRecords(currentUserEmail).collect {
                     _sleepHistory.value = it
                 }
+            }
+            
+            launch { 
+                kotlinx.coroutines.flow.combine(preferenceManager.completedTasks, preferenceManager.lastTaskDate) { tasksStr, dateStr ->
+                    val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                    if (dateStr != today) {
+                        preferenceManager.updateCompletedTasks("", today)
+                        emptySet<String>()
+                    } else {
+                        if (tasksStr.isEmpty()) emptySet() else tasksStr.split(",").toSet()
+                    }
+                }.collect { _completedTasks.value = it }
             }
         }
     }
@@ -325,6 +349,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _bestDayThisWeek.value = sdf.format(Date(it.timestamp))
             }
         }
+        
+        val cal = Calendar.getInstance()
+        var currentDay = cal.get(Calendar.DAY_OF_WEEK)
+        if (currentDay == Calendar.SUNDAY) {
+            currentDay = 8
+        }
+        cal.add(Calendar.DAY_OF_YEAR, -(currentDay - Calendar.MONDAY))
+        cal.set(Calendar.HOUR_OF_DAY, 0)
+        cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        val startOfWeek = cal.timeInMillis
+        
+        cal.add(Calendar.DAY_OF_YEAR, 7)
+        val endOfWeek = cal.timeInMillis
+        
+        _weeklyHistory.value = records.filter { it.timestamp in startOfWeek until endOfWeek }
+        
+        val monthCal = Calendar.getInstance()
+        monthCal.set(Calendar.DAY_OF_MONTH, 1)
+        monthCal.set(Calendar.HOUR_OF_DAY, 0)
+        monthCal.set(Calendar.MINUTE, 0)
+        monthCal.set(Calendar.SECOND, 0)
+        monthCal.set(Calendar.MILLISECOND, 0)
+        val startOfMonth = monthCal.timeInMillis
+        
+        monthCal.add(Calendar.MONTH, 1)
+        val endOfMonth = monthCal.timeInMillis
+        
+        _monthlyHistory.value = records.filter { it.timestamp in startOfMonth until endOfMonth }
     }
 
     // --- AI Logic ---
@@ -539,26 +593,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 
                 val response = RetrofitClient.instance.sendCheckIn(request)
                 
+                val finalScore = response.score
+                val finalLevel = when {
+                    finalScore < 40 -> "Low Stress"
+                    finalScore < 70 -> "Moderate Stress"
+                    else -> "High Stress"
+                }
+                
                 // Update Local UI State
-                stressScore = response.score
-                stressLevel = response.stressLevel
+                stressScore = finalScore
+                stressLevel = finalLevel
                 aiRecommendation = response.recommendation
                 isEscalated = response.isEscalated
                 
                 // Save to Database
                 val record = StressRecord(
                     userEmail = currentUserEmail,
-                    score = response.score,
-                    level = response.stressLevel,
+                    score = finalScore,
+                    level = finalLevel,
                     reasons = listOf(response.message),
-                    stressIndex = response.score,
+                    stressIndex = finalScore,
                     ventText = ventText
                 )
                 stressDao.insertRecord(record)
                 
                 // --- Save to Clinical Database (The New History) ---
                 val clinicalEntity = StressCheckInEntity(
-                    stressLevel = response.stressLevel,
+                    stressLevel = finalLevel,
                     score = response.score,
                     recommendation = response.recommendation,
                     isEscalated = response.isEscalated,
@@ -609,9 +670,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun updateStreak() {
         val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        val newTotal = (_totalCheckins.value.toIntOrNull() ?: 0) + 1
+        
+        var newStreak = (_currentStreak.value.toIntOrNull() ?: 0)
+        var newLongest = (_longestStreak.value.toIntOrNull() ?: 0)
+        
         if (_lastCheckinDate.value != today) {
-            val newTotal = (_totalCheckins.value.toIntOrNull() ?: 0) + 1
-            var newStreak = (_currentStreak.value.toIntOrNull() ?: 0) + 1
+            newStreak += 1
             
             // Check if last checkin was yesterday
             val cal = Calendar.getInstance()
@@ -622,19 +687,65 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 newStreak = 1
             }
             
-            val newLongest = maxOf(newStreak, _longestStreak.value.toIntOrNull() ?: 0)
+            newLongest = maxOf(newStreak, newLongest)
+        }
+        
+        preferenceManager.updateStreakData(
+            newStreak.toString(),
+            newLongest.toString(),
+            newTotal.toString(),
+            today
+        )
+    }
+
+    fun checkAndResetStreak() {
+        viewModelScope.launch {
+            val date = preferenceManager.lastCheckinDate.firstOrNull() ?: ""
+            val streak = preferenceManager.currentStreak.firstOrNull() ?: "0"
+            val longest = preferenceManager.longestStreak.firstOrNull() ?: "0"
+            val total = preferenceManager.totalCheckins.firstOrNull() ?: "0"
             
-            preferenceManager.updateStreakData(
-                newStreak.toString(),
-                newLongest.toString(),
-                newTotal.toString(),
-                today
+            if (date.isNotEmpty() && streak != "0") {
+                val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                val cal = Calendar.getInstance()
+                cal.add(Calendar.DAY_OF_YEAR, -1)
+                val yesterday = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal.time)
+                
+                if (date != today && date != yesterday) {
+                    preferenceManager.updateStreakData("0", longest, total, date)
+                }
+            }
+        }
+    }
+
+    fun completeTask(taskId: String, coinReward: Int) {
+        val current = _completedTasks.value
+        if (current.contains(taskId)) return
+        val newSet = current + taskId
+        val newStr = newSet.joinToString(",")
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+        viewModelScope.launch {
+            preferenceManager.updateCompletedTasks(newStr, today)
+            val coins = _userCoins.value.toIntOrNull() ?: 0
+            preferenceManager.updateUserCoins((coins + coinReward).toString())
+            
+            // Fire local notification for task completion
+            NotificationHelper.showNotification(
+                context = getApplication<Application>(),
+                channelId = NotificationHelper.CHANNEL_ENGAGEMENT,
+                notificationId = (1000..9999).random(),
+                title = "Task Completed! 🎉",
+                message = "Great job completing your stress relief task! You earned $coinReward coins."
             )
         }
     }
 
     fun setTheme(isDark: Boolean) {
         viewModelScope.launch { preferenceManager.setTheme(isDark) }
+    }
+
+    fun setThemeMode(mode: String) {
+        viewModelScope.launch { preferenceManager.setThemeMode(mode) }
     }
 
     fun setLanguage(lang: String) {
@@ -680,7 +791,61 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun exportReport(period: String, format: String, onComplete: (String) -> Unit) {}
+    fun exportReport(period: String, format: String, onComplete: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val records = _history.value
+                val checkins = checkInRepository.allCheckIns.firstOrNull() ?: emptyList()
+                
+                // Filter by period
+                val now = System.currentTimeMillis()
+                val cutoff = when (period) {
+                    "Last 7 Days" -> now - 7L * 24 * 60 * 60 * 1000
+                    "Last 30 Days" -> now - 30L * 24 * 60 * 60 * 1000
+                    "Last 3 Months" -> now - 90L * 24 * 60 * 60 * 1000
+                    else -> 0L
+                }
+                val filtered = if (cutoff > 0) checkins.filter { it.timestamp >= cutoff } else checkins
+                
+                // Build text report
+                val sb = StringBuilder()
+                sb.appendLine("=== CortiSense Wellness Report ===")
+                sb.appendLine("User: ${_userName.value}")
+                sb.appendLine("Period: $period | Format: $format")
+                sb.appendLine("Generated: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}")
+                sb.appendLine("Current Streak: ${_currentStreak.value} days")
+                sb.appendLine("Total Check-ins: ${_totalCheckins.value}")
+                sb.appendLine("")
+                sb.appendLine("--- Check-in History (${filtered.size} records) ---")
+                filtered.forEach { c ->
+                    sb.appendLine("[${c.date} ${c.time}] Stress: ${c.score} (${c.stressLevel}) | Mood: ${c.mood} | Anxiety: ${c.anxiety} | Sleep: ${c.sleepDuration}h | Workload: ${c.workload}")
+                }
+                if (records.isNotEmpty()) {
+                    val avg = records.map { it.score }.average().toInt()
+                    sb.appendLine("")
+                    sb.appendLine("--- Summary ---")
+                    sb.appendLine("Average Stress Score: $avg")
+                    sb.appendLine("Best Day: ${_bestDayThisWeek.value}")
+                }
+                
+                val shareText = sb.toString()
+                val sendIntent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                    putExtra(Intent.EXTRA_SUBJECT, "CortiSense Wellness Report - $period")
+                    type = "text/plain"
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                val shareIntent = Intent.createChooser(sendIntent, "Export Report").apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                getApplication<Application>().startActivity(shareIntent)
+                onComplete("Report exported successfully!")
+            } catch (e: Exception) {
+                onComplete("Export failed: ${e.message}")
+            }
+        }
+    }
 
     fun exportData(format: String) {
         // Implementation for data export logic

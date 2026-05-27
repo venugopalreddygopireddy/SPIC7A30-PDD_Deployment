@@ -12,6 +12,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
@@ -33,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,6 +73,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.draw.clip
 
 import androidx.compose.foundation.clickable
@@ -139,12 +143,21 @@ class MainActivity : AppCompatActivity() {
             }
         }
         
+        NotificationHelper.createNotificationChannels(this)
+        NotificationHelper.scheduleNotifications(this)
+        
         enableEdgeToEdge()
         setContent {
             val viewModel: MainViewModel = viewModel()
             val navController = rememberNavController()
             
-            val isDarkTheme by viewModel.isDarkTheme.collectAsState()
+            val themeMode by viewModel.themeMode.collectAsState()
+            val isSystemDark = isSystemInDarkTheme()
+            val isDarkTheme = when (themeMode) {
+                "dark" -> true
+                "light" -> false
+                else -> isSystemDark
+            }
             val language by viewModel.language.collectAsState()
 
             // Handle locale change gracefully
@@ -246,6 +259,9 @@ class MainActivity : AppCompatActivity() {
                             )
                         }
                         composable("dashboard") {
+                            LaunchedEffect(Unit) {
+                                viewModel.checkAndResetStreak()
+                            }
                             CortiSenseScreen(
                                 viewModel = viewModel,
                                 navController = navController,
@@ -371,6 +387,9 @@ class MainActivity : AppCompatActivity() {
                                 viewModel = viewModel,
                                 navController = navController
                             )
+                        }
+                        composable("chat") {
+                            CortiChatScreen(viewModel = viewModel)
                         }
                     }
             }
@@ -1759,7 +1778,7 @@ fun CortiSenseScreen(
 
     when {
         isSafeMode -> {
-            SafeModeScreen(onStartBreathing = { currentSubScreen = "breathing" }, onTalkToAI = { selectedTab = "AI Chat" })
+            SafeModeScreen(onStartBreathing = { currentSubScreen = "breathing" }, onTalkToAI = { currentSubScreen = "recommendations" })
         }
         showAlertByScore != null -> {
             StressAlertScreen(
@@ -1840,7 +1859,6 @@ fun CortiSenseScreen(
                                 Triple("Home", Icons.Outlined.Home, Icons.Filled.Home),
                                 Triple("Analytics", Icons.Outlined.AutoGraph, Icons.Filled.AutoGraph),
                                 Triple("Check-in", Icons.Outlined.AddCircleOutline, Icons.Filled.AddCircle),
-                                Triple("AI Chat", Icons.Outlined.ChatBubbleOutline, Icons.Filled.ChatBubble),
                                 Triple("Profile", Icons.Outlined.PersonOutline, Icons.Filled.Person)
                             )
 
@@ -1849,7 +1867,6 @@ fun CortiSenseScreen(
                                     "Home" -> stringResource(R.string.tab_home)
                                     "Analytics" -> stringResource(R.string.tab_analytics)
                                     "Check-in" -> stringResource(R.string.tab_checkin)
-                                    "AI Chat" -> stringResource(R.string.tab_ai_chat)
                                     "Profile" -> stringResource(R.string.tab_profile)
                                     else -> label
                                 }
@@ -1918,7 +1935,6 @@ fun CortiSenseScreen(
                             onShare = { currentSubScreen = "share_results" }
                         )
                         "Check-in" -> { /* Handled in NavigationBarItem onClick */ }
-                        "AI Chat" -> CortiChatScreen(viewModel)
                         "Profile" -> ProfileFlow(
                             viewModel = viewModel,
                             onAchievements = { selectedTab = "Achievements" },
@@ -1926,10 +1942,7 @@ fun CortiSenseScreen(
                             onClinicalHistory = { navController.navigate("checkinHistory") },
                             onLogout = onLogout,
                             currentLanguage = language,
-                            onNavigateToChat = {
-                                viewModel.triggerNeedHelpFlow()
-                                selectedTab = "AI Chat"
-                            }
+                            onNavigateToChat = { navController.navigate("chat") }
                         )
                         "Achievements" -> AchievementsScreen(viewModel = viewModel, onBack = { selectedTab = "Profile" })
                         else -> {
@@ -2025,8 +2038,8 @@ fun ProfileFlow(
     onStreak: () -> Unit, 
     onClinicalHistory: () -> Unit,
     onLogout: () -> Unit, 
-    currentLanguage: String, 
-    onNavigateToChat: () -> Unit = {}
+    currentLanguage: String,
+    onNavigateToChat: () -> Unit
 ) {
     var subScreen by rememberSaveable { mutableStateOf("main") }
     
@@ -2205,13 +2218,57 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            // Header
+            // Notification Icon at Top Right
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 48.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.End
+            ) {
+                val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f), RoundedCornerShape(10.dp))
+                        .clickable { onShowNotifications() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(contentAlignment = Alignment.TopEnd) {
+                        Icon(
+                            imageVector = Icons.Filled.NotificationsActive,
+                            contentDescription = "Alerts",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        if (unreadCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .size(14.dp)
+                                    .offset(x = 4.dp, y = (-4).dp)
+                                    .background(Color.Red, CircleShape)
+                                    .border(1.dp, MaterialTheme.colorScheme.surface, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (unreadCount > 9) "9+" else unreadCount.toString(),
+                                    color = Color.White,
+                                    fontSize = 7.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Profile Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2247,43 +2304,9 @@ fun HomeScreen(
                         )
                     }
                 }
-                val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
-                        .clickable { onShowNotifications() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(contentAlignment = Alignment.TopEnd) {
-                        Icon(
-                            imageVector = Icons.Filled.NotificationsActive,
-                            contentDescription = "Alerts",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(36.dp)
-                        )
-                        if (unreadCount > 0) {
-                            Box(
-                                modifier = Modifier
-                                    .size(16.dp)
-                                    .offset(x = 4.dp, y = (-4).dp)
-                                    .background(Color.Red, CircleShape)
-                                    .border(1.5.dp, MaterialTheme.colorScheme.surface, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = if (unreadCount > 9) "9+" else unreadCount.toString(),
-                                    color = Color.White,
-                                    fontSize = 8.sp,
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                            }
-                        }
-                    }
-                }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Stress Orb
             Box(
@@ -2295,7 +2318,7 @@ fun HomeScreen(
                 StressOrb(viewModel = viewModel)
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(32.dp))
 
             // Main Action Button
             Button(
@@ -2346,6 +2369,8 @@ fun HomeScreen(
                     title = stringResource(R.string.sleep_label)
                 )
             }
+            
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
@@ -2372,9 +2397,12 @@ fun CompactStatCard(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun AnalyticsScreen(viewModel: MainViewModel, navController: NavHostController, onExport: () -> Unit, onShare: () -> Unit) {
-    var currentSubTab by remember { mutableStateOf("Trends") }
+    val tabs = listOf("Trends", "Weekly", "Monthly", "Factors", "History")
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { tabs.size })
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     val primaryColor = MaterialTheme.colorScheme.primary
     val textColor = MaterialTheme.colorScheme.onBackground
 
@@ -2401,53 +2429,40 @@ fun AnalyticsScreen(viewModel: MainViewModel, navController: NavHostController, 
         }
 
         ScrollableTabRow(
-            selectedTabIndex = when(currentSubTab) {
-                "Trends" -> 0
-                "Weekly" -> 1
-                "Monthly" -> 2
-                "Factors" -> 3
-                "History" -> 4
-                "Sleep" -> 5
-                else -> 0
-            },
+            selectedTabIndex = pagerState.currentPage,
             containerColor = Color.Transparent,
             contentColor = primaryColor,
             edgePadding = 24.dp,
             divider = {},
             indicator = { tabPositions ->
                 TabRowDefaults.SecondaryIndicator(
-                    modifier = Modifier.tabIndicatorOffset(tabPositions[when(currentSubTab) {
-                        "Trends" -> 0
-                        "Weekly" -> 1
-                        "Monthly" -> 2
-                        "Factors" -> 3
-                        "History" -> 4
-                        "Sleep" -> 5
-                        else -> 0
-                    }]),
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[pagerState.currentPage]),
                     color = primaryColor,
                     height = 3.dp
                 )
             }
         ) {
-            listOf("Trends", "Weekly", "Monthly", "Factors", "History", "Sleep").forEach { tab ->
+            tabs.forEachIndexed { index, tab ->
                 val tabLabel = when(tab) {
                     "Trends" -> stringResource(R.string.trends_tab)
                     "Weekly" -> stringResource(R.string.weekly_tab)
                     "Monthly" -> stringResource(R.string.monthly_tab)
                     "Factors" -> stringResource(R.string.factors_tab)
                     "History" -> stringResource(R.string.history_tab)
-                    "Sleep" -> stringResource(R.string.sleep_tab)
                     else -> tab
                 }
                 Tab(
-                    selected = currentSubTab == tab,
-                    onClick = { currentSubTab = tab },
+                    selected = pagerState.currentPage == index,
+                    onClick = { 
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
+                    },
                     text = { 
                         Text(
                             text = tabLabel,
                             style = MaterialTheme.typography.titleMedium,
-                            color = if (currentSubTab == tab) textColor else textColor.copy(alpha = 0.7f)
+                            color = if (pagerState.currentPage == index) textColor else textColor.copy(alpha = 0.7f)
                         )
                     }
                 )
@@ -2456,14 +2471,16 @@ fun AnalyticsScreen(viewModel: MainViewModel, navController: NavHostController, 
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            when (currentSubTab) {
-                "Trends" -> StressTrendsScreen(viewModel)
-                "Weekly" -> WeeklyReportScreen(viewModel)
-                "Monthly" -> MonthlyReportScreen(viewModel)
-                "Factors" -> FactorBreakdownScreen(viewModel)
-                "History" -> HistoryLogScreen(viewModel, navController)
-                "Sleep" -> SleepAnalyticsScreen(viewModel)
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            when (page) {
+                0 -> StressTrendsScreen(viewModel)
+                1 -> WeeklyReportScreen(viewModel)
+                2 -> MonthlyReportScreen(viewModel)
+                3 -> FactorBreakdownScreen(viewModel)
+                4 -> HistoryLogScreen(viewModel, navController)
             }
         }
     }
@@ -2495,9 +2512,14 @@ fun StressTrendsScreen(viewModel: MainViewModel) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     val sdfLabel = SimpleDateFormat("EEE", Locale.getDefault())
                     val cal = Calendar.getInstance()
+                    var currentDay = cal.get(Calendar.DAY_OF_WEEK)
+                    if (currentDay == Calendar.SUNDAY) {
+                        currentDay = 8
+                    }
+                    cal.add(Calendar.DAY_OF_YEAR, -(currentDay - Calendar.MONDAY))
                     val labels = (0..6).map { i ->
                         val c = cal.clone() as Calendar
-                        c.add(Calendar.DAY_OF_YEAR, -(6 - i))
+                        c.add(Calendar.DAY_OF_YEAR, i)
                         sdfLabel.format(c.time)
                     }
                     labels.forEach { day ->
@@ -2509,26 +2531,7 @@ fun StressTrendsScreen(viewModel: MainViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Heatmap Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(32.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text(stringResource(R.string.consistency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                Spacer(modifier = Modifier.height(24.dp))
-                StressHeatmap(history = history)
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Note: " + stringResource(R.string.consistency_note),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    lineHeight = 16.sp
-                )
-            }
-        }
+        StreakCalendar(history = history)
         
         Spacer(modifier = Modifier.height(32.dp))
     }
@@ -2539,58 +2542,116 @@ fun StressWaveGraph(history: List<StressRecord>) {
     // Get last 7 days including today
     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     
+    val cal = Calendar.getInstance()
+    var currentDay = cal.get(Calendar.DAY_OF_WEEK)
+    if (currentDay == Calendar.SUNDAY) {
+        currentDay = 8
+    }
+    cal.add(Calendar.DAY_OF_YEAR, -(currentDay - Calendar.MONDAY))
+    
     val weekDays = (0..6).map { i ->
-        val cal = Calendar.getInstance()
-        cal.add(Calendar.DAY_OF_YEAR, -(6 - i))
-        sdf.format(cal.time)
+        val c = cal.clone() as Calendar
+        c.add(Calendar.DAY_OF_YEAR, i)
+        sdf.format(c.time)
     }
     
     val dailyScores = history.groupBy { sdf.format(Date(it.timestamp)) }
         .mapValues { entry -> entry.value.map { it.score }.average().toFloat() }
     
     val scores = weekDays.map { dailyScores[it] ?: 0f }
+    val maxScore = 100f
     
-    Canvas(modifier = Modifier.fillMaxWidth().height(120.dp)) {
-        val width = size.width
-        val height = size.height
-        val step = width / (scores.size - 1)
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth().height(160.dp).padding(top = 20.dp, bottom = 20.dp)) {
+        val widthPx = constraints.maxWidth.toFloat()
+        val heightPx = constraints.maxHeight.toFloat()
+        val stepPx = if (scores.size > 1) widthPx / (scores.size - 1) else widthPx
         
-        val path = androidx.compose.ui.graphics.Path()
-        scores.forEachIndexed { index, score ->
-            val x = index * step
-            val y = height - (score / 100f * height)
-            if (index == 0) {
-                path.moveTo(x, y)
-            } else {
-                val prevX = (index - 1) * step
-                val prevY = height - (scores[index - 1] / 100f * height)
-                path.cubicTo(
-                    prevX + step / 2, prevY,
-                    x - step / 2, y,
-                    x, y
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width
+            val height = size.height
+            val step = if (scores.size > 1) width / (scores.size - 1) else width
+            
+            // Draw horizontal grid lines (Y-axis 0, 50, 100)
+            listOf(0f, 0.5f, 1f).forEach { fraction ->
+                val y = height * fraction
+                drawLine(
+                    color = Color.LightGray.copy(alpha = 0.5f),
+                    start = Offset(0f, y),
+                    end = Offset(width, y),
+                    strokeWidth = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                )
+            }
+            
+            val path = androidx.compose.ui.graphics.Path()
+            scores.forEachIndexed { index, score ->
+                val x = index * step
+                val y = height - (score / maxScore * height)
+                if (index == 0) {
+                    path.moveTo(x, y)
+                } else {
+                    val prevX = (index - 1) * step
+                    val prevY = height - (scores[index - 1] / maxScore * height)
+                    path.cubicTo(
+                        prevX + step / 2, prevY,
+                        x - step / 2, y,
+                        x, y
+                    )
+                }
+            }
+            
+            drawPath(
+                path = path,
+                color = SageGreen,
+                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
+            )
+            
+            val fillPath = androidx.compose.ui.graphics.Path().apply {
+                addPath(path)
+                lineTo(width, height)
+                lineTo(0f, height)
+                close()
+            }
+            drawPath(
+                path = fillPath,
+                brush = Brush.verticalGradient(
+                    colors = listOf(SageGreen.copy(alpha = 0.3f), Color.Transparent)
+                )
+            )
+            
+            // Draw points
+            scores.forEachIndexed { index, score ->
+                val x = index * step
+                val y = height - (score / maxScore * height)
+                drawCircle(
+                    color = Color.White,
+                    radius = 5.dp.toPx(),
+                    center = Offset(x, y)
+                )
+                drawCircle(
+                    color = SageGreen,
+                    radius = 3.dp.toPx(),
+                    center = Offset(x, y)
                 )
             }
         }
         
-        drawPath(
-            path = path,
-            color = SageGreen,
-            style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
-        )
-        
-        // Fill area under curve
-        val fillPath = androidx.compose.ui.graphics.Path().apply {
-            addPath(path)
-            lineTo(width, height)
-            lineTo(0f, height)
-            close()
-        }
-        drawPath(
-            path = fillPath,
-            brush = Brush.verticalGradient(
-                colors = listOf(SageGreen.copy(alpha = 0.2f), Color.Transparent)
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        scores.forEachIndexed { index, score ->
+            val xPx = index * stepPx
+            val yPx = heightPx - (score / maxScore * heightPx)
+            
+            val xDp = with(density) { xPx.toDp() }
+            val yDp = with(density) { yPx.toDp() }
+            
+            Text(
+                text = score.toInt().toString(),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.offset(x = xDp - 8.dp, y = yDp - 22.dp)
             )
-        )
+        }
     }
 }
 
@@ -2797,28 +2858,15 @@ fun WeeklyReportScreen(viewModel: MainViewModel, onShare: () -> Unit) {
         
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            ReportMetricCard(modifier = Modifier.weight(1f), icon = Icons.Outlined.FavoriteBorder, title = stringResource(R.string.avg_heart_rate), value = viewModel.heartRate, status = stringResource(R.string.normal_range))
-            ReportMetricCard(modifier = Modifier.weight(1f), icon = Icons.Outlined.NightsStay, title = stringResource(R.string.avg_sleep), value = viewModel.sleepHours, status = stringResource(R.string.excellent))
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
+        val history by viewModel.weeklyHistory.collectAsState()
+        val checkIns = history.size
+        val highestScore = history.maxOfOrNull { it.score } ?: 0
+        val lowestScoreWeekly = history.minOfOrNull { it.score } ?: 0
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            ReportMetricCard(
-                modifier = Modifier.weight(1f).clickable { onShare() },
-                icon = Icons.Outlined.ElectricBolt, 
-                title = stringResource(R.string.energy_level), 
-                value = stringResource(R.string.dynamic), 
-                status = stringResource(R.string.based_on_data)
-            )
-            ReportMetricCard(
-                modifier = Modifier.weight(1f), 
-                icon = Icons.Outlined.TrendingDown, 
-                title = stringResource(R.string.best_day), 
-                value = bestDay, 
-                status = stringResource(R.string.lowest_stress)
-            )
+            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.CheckCircle, iconTint = tealColor, title = "Check-ins", value = "$checkIns")
+            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.TrendingDown, iconTint = tealColor, title = "Lowest Score", value = "$lowestScoreWeekly")
+            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.TrendingUp, iconTint = Color(0xFFFF4B4B), title = "Highest Score", value = "$highestScore")
         }
     }
 }
@@ -2883,6 +2931,109 @@ fun InfoSquareCard(
 
 @Composable
 fun SafeModeScreen(onStartBreathing: () -> Unit, onTalkToAI: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var showSupportDialog by remember { mutableStateOf(false) }
+
+    // Contact Support Dialog
+    if (showSupportDialog) {
+        AlertDialog(
+            onDismissRequest = { showSupportDialog = false },
+            title = {
+                Text(
+                    text = "Contact Support",
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1A1A2E)
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Need help? Reach us through:", color = Color(0xFF444444))
+                    // Email Option
+                    Card(
+                        onClick = {
+                            try {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_SENDTO).apply {
+                                    data = android.net.Uri.parse("mailto:venugopalgopireddy500@gmail.com")
+                                    putExtra(android.content.Intent.EXTRA_SUBJECT, "CortiSense Support Request")
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                android.widget.Toast.makeText(context, "No email app found", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
+                    ) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Email, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("Email Support", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF2E7D32))
+                                Text("venugopalgopireddy500@gmail.com", fontSize = 11.sp, color = Color(0xFF444444))
+                            }
+                        }
+                    }
+                    // Call Option
+                    Card(
+                        onClick = {
+                            try {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply {
+                                    data = android.net.Uri.parse("tel:7013995242")
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                android.widget.Toast.makeText(context, "Cannot open dialer", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD))
+                    ) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Call, null, tint = Color(0xFF1565C0), modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("Call Support", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF1565C0))
+                                Text("+91 7013995242", fontSize = 11.sp, color = Color(0xFF444444))
+                            }
+                        }
+                    }
+                    // WhatsApp Option
+                    Card(
+                        onClick = {
+                            try {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                                    data = android.net.Uri.parse("https://wa.me/917013995242?text=Hi%2C%20I%20need%20support%20with%20CortiSense")
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                android.widget.Toast.makeText(context, "WhatsApp not installed", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9))
+                    ) {
+                        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Chat, null, tint = Color(0xFF2E7D32), modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text("WhatsApp Chat", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF2E7D32))
+                                Text("+91 7013995242", fontSize = 11.sp, color = Color(0xFF444444))
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSupportDialog = false }) {
+                    Text("Close", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -2943,7 +3094,7 @@ fun SafeModeScreen(onStartBreathing: () -> Unit, onTalkToAI: () -> Unit) {
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            TextButton(onClick = onTalkToAI) {
+            TextButton(onClick = { showSupportDialog = true }) {
                 Text(stringResource(R.string.i_need_help), color = Color.White.copy(alpha = 0.6f))
             }
         }
@@ -3151,16 +3302,6 @@ fun StressAlertScreen(score: Int, viewModel: MainViewModel, onBack: () -> Unit, 
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Action Button / Section
-            Text(
-                text = if (stressLevel == "Critical") stringResource(R.string.alert_immediate_actions) else if (stressLevel == "Low") "" else stringResource(R.string.alert_recommended_actions),
-                modifier = Modifier.fillMaxWidth(),
-                fontWeight = FontWeight.Bold,
-                color = textColor
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             if (stressLevel == "Critical") {
                 Button(
                     onClick = onStartBreathing,
@@ -3170,39 +3311,8 @@ fun StressAlertScreen(score: Int, viewModel: MainViewModel, onBack: () -> Unit, 
                 ) {
                     Text(stringResource(R.string.extracted_start_emergency_brea), color = MaterialTheme.colorScheme.surface, fontWeight = FontWeight.Bold)
                 }
-            }
- else if (stressLevel != "Low") {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(imageVector = Icons.Default.Air, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        }
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = stringResource(R.string.extracted_breathing_exercise), fontWeight = FontWeight.Bold, color = textColor)
-                            Text(text = stringResource(R.string.extracted_5_min), color = subtitleColor, fontSize = 12.sp)
-                        }
-                        Button(
-                            onClick = onStartBreathing,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                        ) {
-                            Text(stringResource(R.string.extracted_start), fontSize = 12.sp)
-                        }
-                    }
-                }
-            } else {
+                Spacer(modifier = Modifier.height(24.dp))
+            } else if (stressLevel == "Low") {
                 val currentStreak by viewModel.currentStreak.collectAsState()
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -3223,7 +3333,10 @@ fun StressAlertScreen(score: Int, viewModel: MainViewModel, onBack: () -> Unit, 
                         value = "-12%"
                     )
                 }
+                Spacer(modifier = Modifier.height(24.dp))
             }
+            
+            RecommendedActionsCard(viewModel = viewModel)
             
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -3509,11 +3622,12 @@ fun WeeklyReportScreen(viewModel: MainViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val lowScore by viewModel.todayLowestScore.collectAsState()
+        val highestScore = history.maxOfOrNull { it.score } ?: 0
+        val lowestScoreWeekly = history.minOfOrNull { it.score } ?: 0
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.CheckCircle, iconTint = tealColor, title = stringResource(R.string.report_done), value = "$checkIns")
-            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.Favorite, iconTint = Color(0xFFFF4B4B), title = stringResource(R.string.report_lowest_score), value = "$lowScore")
-            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.SentimentSatisfied, iconTint = Color(0xFFFFD700), title = stringResource(R.string.report_mod), value = "$moderateDays")
+            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.CheckCircle, iconTint = tealColor, title = "Check-ins", value = "$checkIns")
+            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.TrendingUp, iconTint = Color(0xFFFF4B4B), title = "Highest Score", value = "$highestScore")
+            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.TrendingDown, iconTint = tealColor, title = "Lowest Score", value = "$lowestScoreWeekly")
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -3546,7 +3660,7 @@ fun MonthlyReportScreen(viewModel: MainViewModel) {
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val tealColor = MaterialTheme.colorScheme.primary
-    val history by viewModel.history.collectAsState()
+    val history by viewModel.monthlyHistory.collectAsState()
     
     val avgMonthly = if (history.isEmpty()) 0 else history.map { it.score }.average().toInt()
     val checkIns = history.size
@@ -3583,12 +3697,12 @@ fun MonthlyReportScreen(viewModel: MainViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val currentStreak by viewModel.currentStreak.collectAsState()
-        val lowScore by viewModel.todayLowestScore.collectAsState()
+        val highestScore = history.maxOfOrNull { it.score } ?: 0
+        val lowestScoreMonthly = history.minOfOrNull { it.score } ?: 0
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.CalendarToday, iconTint = tealColor, title = stringResource(R.string.report_checkins), value = "$checkIns")
-            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.EmojiEvents, iconTint = Color(0xFFFFD700), title = stringResource(R.string.streak_label), value = currentStreak)
-            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.SentimentVerySatisfied, iconTint = tealColor, title = stringResource(R.string.report_lowest_today), value = "$lowScore")
+            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.CheckCircle, iconTint = tealColor, title = "Check-ins", value = "$checkIns")
+            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.TrendingDown, iconTint = tealColor, title = "Lowest Score", value = "$lowestScoreMonthly")
+            InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.TrendingUp, iconTint = Color(0xFFFF4B4B), title = "Highest Score", value = "$highestScore")
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -3642,7 +3756,7 @@ fun StressDistItem(label: String, days: Int, total: Int, color: Color) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(text = label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onBackground)
             }
-            Text(text = stringResource(R.string.extracted_days_days, days), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+            Text(text = "$days times", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
         }
         Spacer(modifier = Modifier.height(8.dp))
         Box(
@@ -3671,6 +3785,9 @@ fun FactorBreakdownScreen(viewModel: MainViewModel) {
     val allReasons = history.flatMap { it.reasons }
     val counts = allReasons.groupingBy { it }.eachCount()
     val sorted = counts.entries.sortedByDescending { it.value }
+    
+    val lastCheckin = history.maxByOrNull { it.timestamp }
+    val lastCheckinReasons = lastCheckin?.reasons ?: emptyList()
 
     Column(
         modifier = Modifier
@@ -3700,8 +3817,16 @@ fun FactorBreakdownScreen(viewModel: MainViewModel) {
                 
                 Spacer(modifier = Modifier.height(24.dp))
 
-        Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            sorted.forEach { (reason, count) ->
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (sorted.isEmpty()) {
+                Text(
+                    text = "No check-ins yet to analyze.",
+                    fontSize = 14.sp,
+                    color = subtitleColor,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            } else {
+                sorted.forEach { (reason, count) ->
                 val percentage = (count * 100 / allReasons.size)
                 val icon = when {
                     reason.lowercase().contains("sleep") -> Icons.Default.NightsStay
@@ -3720,6 +3845,7 @@ fun FactorBreakdownScreen(viewModel: MainViewModel) {
                 )
             }
         }
+        }
             }
         }
 
@@ -3737,13 +3863,28 @@ fun FactorBreakdownScreen(viewModel: MainViewModel) {
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                val primaryFactor = if (sorted.firstOrNull() != null) getTranslatedReason(sorted.firstOrNull()!!.key) else "your data"
-                Text(
-                    text = stringResource(R.string.extracted_managing_primaryfact, primaryFactor),
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
-                    lineHeight = 20.sp
-                )
+                if (lastCheckinReasons.isEmpty()) {
+                    Text(
+                        text = "Add more check-ins to see personalized recommendations.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                    )
+                } else {
+                    lastCheckinReasons.take(2).forEach { reason ->
+                        Text(
+                            text = "• ${getTranslatedReason(reason)}",
+                            fontWeight = FontWeight.Bold,
+                            color = tealColor
+                        )
+                        Text(
+                            text = getFactorRecommendation(reason),
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f),
+                            lineHeight = 20.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
             }
         }
     }
@@ -3777,6 +3918,20 @@ fun FactorItem(icon: ImageVector, title: String, impact: String, percentage: Int
                 )
             }
         }
+    }
+}
+
+fun getFactorRecommendation(factor: String): String {
+    return when(factor.lowercase()) {
+        "workload", "work", "studies" -> "Break large tasks into smaller steps. Prioritize urgent work and take regular 5-minute breaks."
+        "sleep deprivation", "poor sleep", "sleep" -> "Try to maintain a consistent sleep schedule. Avoid screens 1 hour before bedtime."
+        "anxiety", "overthinking" -> "Practice deep breathing (4-7-8 method). Write down your thoughts to clear your mind."
+        "caffeine", "diet" -> "Limit caffeine intake after 2 PM. Stay hydrated with water throughout the day."
+        "screen time", "device usage" -> "Follow the 20-20-20 rule: Every 20 minutes, look at something 20 feet away for 20 seconds."
+        "health", "illness" -> "Rest is crucial. Consult a doctor if symptoms persist, and listen to your body's limits."
+        "family", "relationship" -> "Communicate openly with loved ones. Setting healthy boundaries can significantly reduce stress."
+        "finance", "money" -> "Create a clear budget and track expenses. Focus on small, manageable financial goals."
+        else -> "Take a moment to step back and breathe. Regular mindfulness and short breaks can help manage this stressor."
     }
 }
 
@@ -4832,10 +4987,19 @@ fun ProfileMainScreenContent(
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val tealColor = MaterialTheme.colorScheme.primary
-    val isDarkTheme by viewModel.isDarkTheme.collectAsState()
     val history by viewModel.history.collectAsState()
     val imageUri by viewModel.profileImageUri.collectAsState()
     val currentStreak by viewModel.currentStreak.collectAsState()
+    val currentUserName by viewModel.userName.collectAsState()
+    
+    val themeMode by viewModel.themeMode.collectAsState()
+    val isSystemDark = isSystemInDarkTheme()
+    val isDarkTheme = when (themeMode) {
+        "dark" -> true
+        "light" -> false
+        else -> isSystemDark
+    }
+    
     var showImagePreview by remember { mutableStateOf(false) }
 
     if (showImagePreview) {
@@ -4886,15 +5050,12 @@ fun ProfileMainScreenContent(
             .padding(24.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        val userCoins by viewModel.userCoins.collectAsState()
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(text = stringResource(R.string.profile), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = textColor)
-            CoinDisplay(coins = userCoins)
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -4923,22 +5084,7 @@ fun ProfileMainScreenContent(
             Spacer(modifier = Modifier.width(20.dp))
             Column {
                 Text(text = viewModel.currentUserName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
-                Text(text = viewModel.currentUserEmail, fontSize = 14.sp, color = subtitleColor)
-                val isPremium by viewModel.isPremium.collectAsState()
-                if (isPremium) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = RoundedCornerShape(50),
-                        modifier = Modifier.padding(top = 4.dp)
-                    ) {
-                        Text(stringResource(R.string.extracted_premium_member),
-                            fontSize = 10.sp,
-                            color = tealColor,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                        )
-                    }
-                }
+                Text(text = viewModel.currentUserEmail, fontSize = 12.sp, color = subtitleColor)
             }
         }
 
@@ -4982,39 +5128,19 @@ fun ProfileMainScreenContent(
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        Text(text = stringResource(R.string.extracted_preferences), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = subtitleColor)
-        Spacer(modifier = Modifier.height(12.dp))
+        // --- Check-in History / Clinical History ---
+        val clinicalHistory by viewModel.clinicalHistory.collectAsState(initial = emptyList())
         
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.NightsStay, null, tint = subtitleColor, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(text = stringResource(R.string.dark_mode), fontWeight = FontWeight.Medium, color = textColor)
-                }
-                Switch(
-                    checked = isDarkTheme,
-                    onCheckedChange = { viewModel.setTheme(it) },
-                    colors = SwitchDefaults.colors(checkedTrackColor = tealColor)
-                )
-            }
-        }
-
+        ProfileMenuItem(
+            icon = Icons.Default.History,
+            title = "Check-in & Clinical History (${clinicalHistory.size})",
+            onClick = onClinicalHistory
+        )
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(text = stringResource(R.string.extracted_account), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = subtitleColor)
         Spacer(modifier = Modifier.height(12.dp))
 
-        ProfileMenuItem(Icons.Default.History, "Clinical History", onClick = onClinicalHistory)
         ProfileMenuItem(Icons.Default.Edit, stringResource(R.string.menu_edit_profile), onClick = onEditProfile)
         ProfileMenuItem(Icons.Default.Palette, stringResource(R.string.menu_appearance), onClick = onAppearance)
         ProfileMenuItem(Icons.Default.Language, stringResource(R.string.menu_language), onClick = onLanguage)
@@ -5025,6 +5151,95 @@ fun ProfileMainScreenContent(
         Spacer(modifier = Modifier.height(32.dp))
         TextButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
             Text(text = stringResource(R.string.logout), color = Color.Red, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+fun RecommendedActionsCard(viewModel: MainViewModel) {
+    val completedTasks by viewModel.completedTasks.collectAsState()
+    val stressScore = viewModel.stressScore
+    
+    val tasks = if (stressScore > 70) {
+        listOf(
+            Triple("task_breath", "5-Minute Deep Breathing", 10),
+            Triple("task_meditate", "10-Minute Guided Meditation", 15),
+            Triple("task_journal", "Write down your thoughts", 5),
+            Triple("task_music", "Listen to calm music", 10),
+            Triple("task_stretch", "Do some light stretching", 10)
+        )
+    } else if (stressScore > 40) {
+        listOf(
+            Triple("task_walk", "Take a 15-minute short walk", 15),
+            Triple("task_water", "Drink a glass of water", 5),
+            Triple("task_breath", "5-Minute Deep Breathing", 10),
+            Triple("task_read", "Read a book for 10 minutes", 10),
+            Triple("task_music", "Listen to calm music", 10)
+        )
+    } else {
+        listOf(
+            Triple("task_water", "Drink a glass of water", 5),
+            Triple("task_stretch", "Do some light stretching", 10),
+            Triple("task_hobby", "Spend time on a hobby", 15),
+            Triple("task_friends", "Chat with a friend", 10),
+            Triple("task_walk", "Take a 10-minute short walk", 15)
+        )
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text("Recommended Actions", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+            Text("Tasks based on your current stress score ($stressScore)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val remainingTasks = tasks.filter { !completedTasks.contains(it.first) }
+
+            if (remainingTasks.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(48.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("All tasks completed!", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onBackground)
+                        Text("Come back later for more.", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            } else {
+                tasks.forEach { (id, title, coins) ->
+                    val isCompleted = completedTasks.contains(id)
+                    AnimatedVisibility(
+                        visible = !isCompleted,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier.size(40.dp).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f), RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Default.Spa, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(title, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground)
+                            }
+                            
+                            Button(
+                                onClick = { viewModel.completeTask(id, coins) },
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                                modifier = Modifier.height(32.dp)
+                            ) {
+                                Text("Done", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -5048,6 +5263,15 @@ fun ProfileStatCard(modifier: Modifier, value: String, label: String) {
 }
 
 @Composable
+fun CheckInDataItem(label: String, value: String, valueColor: Color = MaterialTheme.colorScheme.onBackground) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 4.dp)) {
+        Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = valueColor)
+        Text(text = label, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+
+@Composable
 fun ProfileMenuItem(icon: ImageVector, title: String, onClick: () -> Unit) {
     Card(
         modifier = Modifier
@@ -5066,6 +5290,7 @@ fun ProfileMenuItem(icon: ImageVector, title: String, onClick: () -> Unit) {
         }
     }
 }
+
 
 @Composable
 fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
@@ -6192,12 +6417,36 @@ fun PrivacyScreen(viewModel: MainViewModel, onLogout: () -> Unit, onBack: () -> 
             }
 
             Spacer(modifier = Modifier.height(24.dp))
-            Text(text = stringResource(R.string.extracted_data_sharing), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = subtitleColor)
+            Text(text = "Privacy Policy", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = subtitleColor)
             Spacer(modifier = Modifier.height(12.dp))
-
-            SettingToggleItem(Icons.Default.Visibility, stringResource(R.string.usage_analytics), stringResource(R.string.help_improve_app))
-            SettingToggleItem(Icons.Default.Lock, stringResource(R.string.anonymous_research), stringResource(R.string.contribute_research))
-
+            
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("1. Information Collection", fontWeight = FontWeight.Bold, color = textColor)
+                    Text("We collect account details, mood logs, stress levels, and usage analytics to provide personalized insights.", fontSize = 13.sp, color = subtitleColor, lineHeight = 18.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text("2. How Data is Used", fontWeight = FontWeight.Bold, color = textColor)
+                    Text("Your data is used exclusively to generate wellness insights, improve our AI accuracy, and provide relevant notifications.", fontSize = 13.sp, color = subtitleColor, lineHeight = 18.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text("3. Data Sharing & Security", fontWeight = FontWeight.Bold, color = textColor)
+                    Text("We do not sell your personal data. All health and account data is encrypted and stored securely.", fontSize = 13.sp, color = subtitleColor, lineHeight = 18.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text("4. User Rights", fontWeight = FontWeight.Bold, color = textColor)
+                    Text("You have the right to access, export, or permanently delete your data at any time using the options below.", fontSize = 13.sp, color = subtitleColor, lineHeight = 18.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text("5. Contact", fontWeight = FontWeight.Bold, color = textColor)
+                    Text("For privacy inquiries, contact privacy@cortisense.com.", fontSize = 13.sp, color = subtitleColor, lineHeight = 18.sp)
+                }
+            }
             Spacer(modifier = Modifier.height(24.dp))
             Text(text = stringResource(R.string.extracted_your_data), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = subtitleColor)
             Spacer(modifier = Modifier.height(12.dp))
@@ -6229,6 +6478,7 @@ fun PrivacyScreen(viewModel: MainViewModel, onLogout: () -> Unit, onBack: () -> 
                     }
                 }
             }
+
         }
     }
 }
@@ -6245,21 +6495,42 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit, onNavigateToChat: 
     var showPremiumDialog by remember { mutableStateOf(false) }
     var showWhatsNewDialog by remember { mutableStateOf(false) }
     var showTermsDialog by remember { mutableStateOf(false) }
+    var showSupportDialog by remember { mutableStateOf(false) }
 
     // Premium Dialog
     if (showPremiumDialog) {
         AlertDialog(
             onDismissRequest = { showPremiumDialog = false },
-            title = { Text(if (isPremium) stringResource(R.string.premium_active) else stringResource(R.string.premium_upgrade_title)) },
+            title = { Text(stringResource(R.string.premium_upgrade_title), fontWeight = FontWeight.Bold, color = tealColor) },
             text = { 
                 if (isPremium) {
-                    Text(stringResource(R.string.thank_you_premium))
-                } else {
                     Column {
+                        Text(stringResource(R.string.thank_you_premium), fontWeight = FontWeight.Bold, color = tealColor)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("You are enjoying all the exclusive features of CortiSense Premium. Thank you for your support!", fontSize = 14.sp)
+                    }
+                } else {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         Text(stringResource(R.string.premium_upgrade_desc))
                         Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text("How to earn coins:", fontWeight = FontWeight.Bold, color = tealColor)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text("1. Daily Check-ins", fontWeight = FontWeight.Medium)
+                        Text("Earn coins every day by completing your mood check-ins.", fontSize = 12.sp, color = subtitleColor)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Text("2. Keep Your Streak", fontWeight = FontWeight.Medium)
+                        Text("Maintain a long streak for bonus multiplier coins.", fontSize = 12.sp, color = subtitleColor)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        
+                        Text("3. Meet Daily Goals", fontWeight = FontWeight.Medium)
+                        Text("Complete achievements and wellness goals.", fontSize = 12.sp, color = subtitleColor)
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
                         Text(stringResource(R.string.cost_2000_coins), fontWeight = FontWeight.Bold)
-                        Text(stringResource(R.string.premium_balance_info, userCoins), fontSize = 12.sp)
+                        Text(stringResource(R.string.premium_balance_info, userCoins), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                     }
                 }
             },
@@ -6294,12 +6565,28 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit, onNavigateToChat: 
             onDismissRequest = { showWhatsNewDialog = false },
             title = { Text(stringResource(R.string.whats_new_dialog)) },
             text = {
-                Column {
-                    Text(stringResource(R.string.changelog_1))
-                    Text(stringResource(R.string.changelog_2))
-                    Text(stringResource(R.string.changelog_3))
-                    Text(stringResource(R.string.changelog_4))
-                    Text(stringResource(R.string.changelog_5))
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    val updates = listOf(
+                        Icons.Default.AutoGraph to "Personalized Stress Insights" to "CortiSense AI now delivers deeper analysis of your daily check-ins to identify hidden stress patterns.",
+                        Icons.Default.Spa to "New Stress Relief Tasks" to "Earn coins by completing daily tasks like Deep Breathing, Walking, and Hydration to reach your wellness goals.",
+                        Icons.Default.NotificationsActive to "Smart Reminders" to "Never miss a check-in or task with our new adaptive notification system.",
+                        Icons.Default.Headset to "Expanded Support" to "Need help? You can now instantly reach our support team via WhatsApp, Email, or Phone."
+                    )
+                    
+                    updates.forEach { (iconTitle, desc) ->
+                        val (icon, title) = iconTitle
+                        Row(modifier = Modifier.padding(bottom = 16.dp), verticalAlignment = Alignment.Top) {
+                            Box(modifier = Modifier.size(40.dp).background(tealColor.copy(alpha = 0.1f), CircleShape), contentAlignment = Alignment.Center) {
+                                Icon(icon, contentDescription = null, tint = tealColor, modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(desc, fontSize = 13.sp, color = subtitleColor, lineHeight = 18.sp)
+                            }
+                        }
+                    }
                 }
             },
             confirmButton = {
@@ -6314,10 +6601,96 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit, onNavigateToChat: 
             onDismissRequest = { showTermsDialog = false },
             title = { Text(stringResource(R.string.terms_privacy_dialog)) },
             text = {
-                Text(stringResource(R.string.privacy_policy_text), lineHeight = 20.sp)
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text("Effective Date: May 26, 2026", fontSize = 12.sp, color = subtitleColor)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("1. Introduction", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor)
+                    Text("Welcome to CortiSense. By using our app, you agree to these Terms and Conditions. Please read them carefully. CortiSense is designed to help you track stress and well-being.", fontSize = 13.sp, color = subtitleColor, lineHeight = 18.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text("2. Health Disclaimer", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor)
+                    Text("CortiSense is not a medical device. The insights, suggestions, and AI chat provided are for informational purposes only and do not constitute professional medical advice, diagnosis, or treatment.", fontSize = 13.sp, color = subtitleColor, lineHeight = 18.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text("3. Data Privacy & Security", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor)
+                    Text("We take your privacy seriously. Your clinical history, mood records, and chat logs are stored securely. We do not sell your personal data to third parties. For AI features, anonymized text may be processed securely.", fontSize = 13.sp, color = subtitleColor, lineHeight = 18.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text("4. Premium Services", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor)
+                    Text("Premium features can be unlocked using in-app coins. Coins are earned through daily activity. Virtual currency holds no real-world monetary value and cannot be exchanged for cash.", fontSize = 13.sp, color = subtitleColor, lineHeight = 18.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text("5. User Conduct", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor)
+                    Text("You agree to use CortiSense for lawful purposes only. Misuse of the AI support system or exploiting coin mechanisms is strictly prohibited.", fontSize = 13.sp, color = subtitleColor, lineHeight = 18.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text("6. Changes to Terms", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = textColor)
+                    Text("We reserve the right to modify these terms at any time. Continued use of the app signifies your acceptance of any updated terms.", fontSize = 13.sp, color = subtitleColor, lineHeight = 18.sp)
+                }
             },
             confirmButton = {
                 TextButton(onClick = { showTermsDialog = false }) { Text(stringResource(R.string.i_understand_btn)) }
+            }
+        )
+    }
+
+    // Support Dialog
+    if (showSupportDialog) {
+        AlertDialog(
+            onDismissRequest = { showSupportDialog = false },
+            title = { Text(stringResource(R.string.contact_support)) },
+            text = {
+                Column {
+                    TextButton(
+                        onClick = {
+                            showSupportDialog = false
+                            try {
+                                val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                    data = Uri.parse("mailto:support@cortisense.com")
+                                    putExtra(Intent.EXTRA_SUBJECT, "CortiSense Support")
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Mail Support") }
+                    
+                    TextButton(
+                        onClick = {
+                            showSupportDialog = false
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    data = Uri.parse("https://wa.me/917013995242")
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "WhatsApp not found", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("WhatsApp Chat") }
+                    
+                    TextButton(
+                        onClick = {
+                            showSupportDialog = false
+                            try {
+                                val intent = Intent(Intent.ACTION_DIAL).apply {
+                                    data = Uri.parse("tel:+917013995242")
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "No dialer app found", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Call Support") }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSupportDialog = false }) { Text(stringResource(R.string.close_btn)) }
             }
         )
     }
@@ -6349,23 +6722,11 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit, onNavigateToChat: 
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            ProfileMenuItem(
-                icon = if (isPremium) Icons.Default.Star else Icons.Default.StarOutline, 
-                title = if (isPremium) stringResource(R.string.premium_active) else stringResource(R.string.upgrade_premium), 
-                onClick = { showPremiumDialog = true }
-            )
+
             ProfileMenuItem(Icons.Default.Info, stringResource(R.string.whats_new), onClick = { showWhatsNewDialog = true })
             ProfileMenuItem(Icons.Default.Description, stringResource(R.string.terms_and_privacy), onClick = { showTermsDialog = true })
             ProfileMenuItem(Icons.Default.Email, stringResource(R.string.contact_support), onClick = { 
-                try {
-                    val intent = Intent(Intent.ACTION_SENDTO).apply {
-                        data = Uri.parse("mailto:support@cortisense.com")
-                        putExtra(Intent.EXTRA_SUBJECT, "CortiSense Support")
-                    }
-                    context.startActivity(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(context, "No email app found", Toast.LENGTH_SHORT).show()
-                }
+                showSupportDialog = true
             })
             ProfileMenuItem(Icons.Default.Star, stringResource(R.string.rate_us), onClick = { 
                 try {
@@ -6386,7 +6747,16 @@ fun AboutScreen(viewModel: MainViewModel, onBack: () -> Unit, onNavigateToChat: 
                 text = stringResource(R.string.extracted_need_help), 
                 fontWeight = FontWeight.Bold, 
                 color = textColor,
-                modifier = Modifier.clickable { onNavigateToChat() }.padding(8.dp)
+                modifier = Modifier.clickable { 
+                    try {
+                        val intent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = Uri.parse("smsto:+917981821290")
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "No messaging app found", Toast.LENGTH_SHORT).show()
+                    }
+                }.padding(8.dp)
             )
         }
     }
@@ -7041,13 +7411,19 @@ fun NumberedStep(number: Int, title: String, description: String) {
 
 @Composable
 fun AppearanceScreen(viewModel: MainViewModel, onBack: () -> Unit) {
-    val isDarkTheme by viewModel.isDarkTheme.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsState()
+    val isSystemDark = isSystemInDarkTheme()
+    val isDarkTheme = when (themeMode) {
+        "dark" -> true
+        "light" -> false
+        else -> isSystemDark
+    }
     val tealColor = MaterialTheme.colorScheme.primary
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+        Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
             }
@@ -7095,8 +7471,9 @@ fun AppearanceScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             Text(text = stringResource(R.string.extracted_select_theme), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = subtitleColor)
             Spacer(modifier = Modifier.height(16.dp))
             
-            ThemeOption(Icons.Default.LightMode, stringResource(R.string.option_calm), stringResource(R.string.option_okay), !isDarkTheme) { viewModel.setTheme(false) } // Reusing some strings or should add new ones?
-            ThemeOption(Icons.Default.DarkMode, stringResource(R.string.dark_mode_title), "Easy on the eyes in low light", isDarkTheme) { viewModel.setTheme(true) }
+            ThemeOption(Icons.Default.LightMode, "Light mode", "Classic light interface", themeMode == "light") { viewModel.setThemeMode("light") }
+            ThemeOption(Icons.Default.DarkMode, stringResource(R.string.dark_mode_title), "Easy on the eyes in low light", themeMode == "dark") { viewModel.setThemeMode("dark") }
+            ThemeOption(Icons.Default.Settings, "System Default", "Adapts to your device settings", themeMode == "system") { viewModel.setThemeMode("system") }
         }
     }
 }
@@ -7114,14 +7491,14 @@ fun ThemeOption(icon: ImageVector, title: String, subtitle: String, isSelected: 
     Card(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onClick() },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = if (title == "Dark Mode" && !isSelected) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(if (isSelected) 2.dp else 1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, fontWeight = FontWeight.Bold, color = if (title == "Dark Mode" && !isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.onBackground)
+                Text(text = title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                 Text(text = subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (isSelected) Icon(Icons.Default.Check, null, tint = MaterialTheme.colorScheme.primary)
@@ -7169,10 +7546,22 @@ fun LanguageScreen(currentLanguage: String, onLanguageChange: (String) -> Unit, 
             
             Spacer(modifier = Modifier.height(24.dp))
             Column(modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                LanguageItem("English", "English", "🇺🇸", currentLanguage == "en") { onLanguageChange("en") }
-                LanguageItem("हिंदी", "Hindi", "🇮🇳", currentLanguage == "hi") { onLanguageChange("hi") }
-                LanguageItem("தமிழ்", "Tamil", "🇮🇳", currentLanguage == "ta") { onLanguageChange("ta") }
-                LanguageItem("తెలుగు", "Telugu", "🇮🇳", currentLanguage == "te") { onLanguageChange("te") }
+                val allLanguages = listOf(
+                    Triple("English", "English", "🇺🇸") to "en",
+                    Triple("हिंदी", "Hindi", "🇮🇳") to "hi",
+                    Triple("தமிழ்", "Tamil", "🇮🇳") to "ta",
+                    Triple("తెలుగు", "Telugu", "🇮🇳") to "te"
+                )
+                
+                val filteredLanguages = allLanguages.filter { (langInfo, _) ->
+                    val (label, subtitle, _) = langInfo
+                    label.contains(searchQuery, ignoreCase = true) || subtitle.contains(searchQuery, ignoreCase = true)
+                }
+                
+                filteredLanguages.forEach { (langInfo, code) ->
+                    val (label, subtitle, flag) = langInfo
+                    LanguageItem(label, subtitle, flag, currentLanguage == code) { onLanguageChange(code) }
+                }
             }
             
             Spacer(modifier = Modifier.height(16.dp))

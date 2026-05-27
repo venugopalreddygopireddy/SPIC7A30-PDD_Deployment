@@ -133,7 +133,7 @@ interface ApiService {
 
 object RetrofitClient {
 
-    private const val BASE_URL = "http://10.17.164.160:8000/"
+    private const val BASE_URL = "https://cortisense-backend.onrender.com/"
 
     private val client = OkHttpClient.Builder()
 

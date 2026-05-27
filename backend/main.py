@@ -19,8 +19,17 @@ from database import engine, get_db
 # CREATE DATABASE TABLES
 # ============================================
 
+from sqlalchemy import text
+
 models.Base.metadata.create_all(bind=engine)
 print(models.Base.metadata.tables.keys())
+
+try:
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+    print("PostgreSQL Connected Successfully")
+except Exception as e:
+    print(f"Error connecting to PostgreSQL: {e}")
 
 # ============================================
 # FASTAPI APP

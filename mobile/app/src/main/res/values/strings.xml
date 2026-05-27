@@ -807,7 +807,7 @@
     <string name="witty_checkin_t3">Morning, Rockstar! 🎸</string>
     <string name="witty_checkin_m3">Your cortisol levels are calling for a quick check-in. Don\'t leave them hanging!</string>
     <string name="witty_checkin_t4">Wakey Wakey, Stress-Free Bakey! 🥯</string>
-    <string name="witty_checkin_m4">Log your data now and earn some shiny coins for your profile! 🪙</string>
+    <string name="witty_checkin_m4">Log your data now and keep up your daily streak! 🌟</string>
 
     <string name="witty_critical_t1">ABORT MISSION! 🚨</string>
     <string name="witty_critical_m1">Your stress is hitting peak levels. Drop everything and breathe for 2 mins. NOW! 🌬️</string>
@@ -827,9 +827,9 @@
     <string name="witty_low_t1">Smooth Sailing! ⛵</string>
     <string name="witty_low_m1">You\'re in the Low stress zone. Keep doing what you\'re doing, you\'re a pro!</string>
     <string name="witty_low_t2">Vibe Check: Passed! ✨</string>
-    <string name="witty_low_m2">Stress levels are low. Want to earn more coins by trying an exercise? 🪙</string>
+    <string name="witty_low_m2">Stress levels are low. Want to try a new wellness exercise? 🧘</string>
 
-    <string name="witty_engage_t1">Psst... want some coins? 🪙</string>
+    <string name="witty_engage_t1">Psst... want a wellness boost? ✨</string>
     <string name="witty_engage_m1">Check-in now and boost your wellness score! 🚀</string>
     <string name="witty_engage_t2">Zzz... was that a power nap? 😴</string>
     <string name="witty_engage_m2">Log your sleep and see how it affects your focus!</string>

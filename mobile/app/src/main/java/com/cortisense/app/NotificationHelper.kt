@@ -144,4 +144,34 @@ object NotificationHelper {
         )
         return messages.random()
     }
+
+    fun scheduleNotifications(context: Context) {
+        val checkinWork = androidx.work.PeriodicWorkRequestBuilder<NotificationWorker>(6, java.util.concurrent.TimeUnit.HOURS)
+            .setInputData(androidx.work.workDataOf("type" to "checkin"))
+            .build()
+            
+        val engagementWork = androidx.work.PeriodicWorkRequestBuilder<NotificationWorker>(1, java.util.concurrent.TimeUnit.DAYS)
+            .setInputData(androidx.work.workDataOf("type" to "engagement"))
+            .build()
+            
+        val achievementWork = androidx.work.PeriodicWorkRequestBuilder<NotificationWorker>(7, java.util.concurrent.TimeUnit.DAYS)
+            .setInputData(androidx.work.workDataOf("type" to "achievements"))
+            .build()
+            
+        val stressWork = androidx.work.PeriodicWorkRequestBuilder<NotificationWorker>(12, java.util.concurrent.TimeUnit.HOURS)
+            .setInputData(androidx.work.workDataOf("type" to "stress"))
+            .build()
+            
+        val tasksWork = androidx.work.PeriodicWorkRequestBuilder<NotificationWorker>(8, java.util.concurrent.TimeUnit.HOURS)
+            .setInputData(androidx.work.workDataOf("type" to "tasks"))
+            .build()
+
+        androidx.work.WorkManager.getInstance(context).apply {
+            enqueueUniquePeriodicWork("checkinWork", androidx.work.ExistingPeriodicWorkPolicy.KEEP, checkinWork)
+            enqueueUniquePeriodicWork("engagementWork", androidx.work.ExistingPeriodicWorkPolicy.KEEP, engagementWork)
+            enqueueUniquePeriodicWork("achievementWork", androidx.work.ExistingPeriodicWorkPolicy.KEEP, achievementWork)
+            enqueueUniquePeriodicWork("stressWork", androidx.work.ExistingPeriodicWorkPolicy.KEEP, stressWork)
+            enqueueUniquePeriodicWork("tasksWork", androidx.work.ExistingPeriodicWorkPolicy.KEEP, tasksWork)
+        }
+    }
 }

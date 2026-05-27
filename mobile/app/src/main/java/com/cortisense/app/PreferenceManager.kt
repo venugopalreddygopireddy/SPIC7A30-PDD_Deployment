@@ -15,6 +15,7 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "se
 class PreferenceManager(private val context: Context) {
     companion object {
         val THEME_KEY = booleanPreferencesKey("dark_theme")
+        val THEME_MODE_KEY = stringPreferencesKey("theme_mode")
         val LANGUAGE_KEY = stringPreferencesKey("language")
         
         val USERNAME_KEY = stringPreferencesKey("username")
@@ -43,10 +44,17 @@ class PreferenceManager(private val context: Context) {
         val USER_COINS_KEY = stringPreferencesKey("user_coins")
         val SLEEP_START_TIME_KEY = stringPreferencesKey("sleep_start_time")
         val IS_SLEEP_TRACKING_KEY = booleanPreferencesKey("is_sleep_tracking")
+        
+        val COMPLETED_TASKS_KEY = stringPreferencesKey("completed_tasks")
+        val LAST_TASK_DATE_KEY = stringPreferencesKey("last_task_date")
     }
 
     val isDarkTheme: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[THEME_KEY] ?: false
+    }
+
+    val themeMode: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[THEME_MODE_KEY] ?: "system"
     }
 
     val language: Flow<String> = context.dataStore.data.map { preferences ->
@@ -79,9 +87,18 @@ class PreferenceManager(private val context: Context) {
     val sleepStartTime: Flow<String> = context.dataStore.data.map { it[SLEEP_START_TIME_KEY] ?: "0" }
     val isSleepTracking: Flow<Boolean> = context.dataStore.data.map { it[IS_SLEEP_TRACKING_KEY] ?: false }
 
+    val completedTasks: Flow<String> = context.dataStore.data.map { it[COMPLETED_TASKS_KEY] ?: "" }
+    val lastTaskDate: Flow<String> = context.dataStore.data.map { it[LAST_TASK_DATE_KEY] ?: "" }
+
     suspend fun setTheme(isDark: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[THEME_KEY] = isDark
+        }
+    }
+
+    suspend fun setThemeMode(mode: String) {
+        context.dataStore.edit { preferences ->
+            preferences[THEME_MODE_KEY] = mode
         }
     }
 
@@ -168,6 +185,13 @@ class PreferenceManager(private val context: Context) {
         context.dataStore.edit { prefs ->
             prefs[IS_SLEEP_TRACKING_KEY] = isTracking
             prefs[SLEEP_START_TIME_KEY] = startTime
+        }
+    }
+
+    suspend fun updateCompletedTasks(tasks: String, date: String) {
+        context.dataStore.edit { prefs ->
+            prefs[COMPLETED_TASKS_KEY] = tasks
+            prefs[LAST_TASK_DATE_KEY] = date
         }
     }
 }
