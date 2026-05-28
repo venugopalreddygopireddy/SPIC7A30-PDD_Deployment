@@ -163,7 +163,7 @@ def send_otp_email(to_email: str, otp: str):
         body = f"Your CortiSense password reset OTP is: {otp}\nIt expires in 15 minutes."
         msg.attach(MIMEText(body, 'plain'))
         
-        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
         server.starttls()
         server.login(sender_email, sender_password)
         print("SMTP login successful")
