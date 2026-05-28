@@ -135,6 +135,9 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
 @app.post("/register", response_model=schemas.Token)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    if len(user.password) > 64:
+        raise HTTPException(status_code=400, detail="Password cannot be longer than 64 characters")
+        
     db_user = crud.get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
