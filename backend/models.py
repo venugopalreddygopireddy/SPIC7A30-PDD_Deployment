@@ -14,6 +14,9 @@ class User(Base):
     age = Column(Integer)
     gender = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    reset_otp = Column(String, nullable=True)
+    reset_otp_expires_at = Column(DateTime, nullable=True)
 
     checkins = relationship("StressCheckIn", back_populates="user")
 

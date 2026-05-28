@@ -265,12 +265,61 @@ class MainActivity : AppCompatActivity() {
                             )
                         }
                         composable("forgot_password") {
+                            val context = LocalContext.current
                             ForgotPasswordScreen(
                                 onBackToLogin = { navController.popBackStack() },
                                 onPasswordReset = { email -> 
-                                    viewModel.resetPassword(email) {
-                                        navController.navigate("login") {
+                                    viewModel.forgotPasswordApi(email) { otp ->
+                                        android.widget.Toast.makeText(
+                                            context, 
+                                            "OTP for testing: $otp", 
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                        navController.navigate("verify_otp/$email")
+                                    }
+                                }
+                            )
+                        }
+                        composable(
+                            "verify_otp/{email}",
+                            arguments = listOf(androidx.navigation.navArgument("email") { type = androidx.navigation.NavType.StringType })
+                        ) { backStackEntry ->
+                            val email = backStackEntry.arguments?.getString("email") ?: ""
+                            val context = LocalContext.current
+                            VerifyOTPScreen(
+                                email = email,
+                                onBack = { navController.popBackStack() },
+                                onVerify = { otp ->
+                                    viewModel.verifyOtpApi(email, otp) {
+                                        navController.navigate("reset_password/$email/$otp") {
                                             popUpTo("forgot_password") { inclusive = true }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                        composable(
+                            "reset_password/{email}/{otp}",
+                            arguments = listOf(
+                                androidx.navigation.navArgument("email") { type = androidx.navigation.NavType.StringType },
+                                androidx.navigation.navArgument("otp") { type = androidx.navigation.NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val email = backStackEntry.arguments?.getString("email") ?: ""
+                            val otp = backStackEntry.arguments?.getString("otp") ?: ""
+                            val context = LocalContext.current
+                            ResetPasswordScreen(
+                                email = email,
+                                onBack = { navController.popBackStack() },
+                                onReset = { newPass ->
+                                    viewModel.resetPasswordApi(email, otp, newPass) {
+                                        android.widget.Toast.makeText(
+                                            context, 
+                                            "Password reset successfully. Please sign in.", 
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                        navController.navigate("login") {
+                                            popUpTo("login") { inclusive = true }
                                         }
                                     }
                                 }
@@ -7636,3 +7685,128 @@ fun LanguageItem(label: String, subtitle: String, flag: String, isSelected: Bool
     }
 }
 
+@Composable
+fun VerifyOTPScreen(
+    email: String,
+    onBack: () -> Unit,
+    onVerify: (String) -> Unit
+) {
+    var otp by remember { mutableStateOf("") }
+    
+    val tealColor = MaterialTheme.colorScheme.primary
+    val textColor = MaterialTheme.colorScheme.onBackground
+    val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Text("Verify OTP", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = textColor)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Enter the 6-digit OTP sent to $email", fontSize = 14.sp, color = subtitleColor, textAlign = TextAlign.Center)
+            
+            Spacer(modifier = Modifier.height(40.dp))
+            
+            CustomTextField(
+                label = "6-Digit OTP",
+                value = otp,
+                onValueChange = { if (it.length <= 6) otp = it },
+                placeholder = "123456"
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Button(
+                onClick = { onVerify(otp) },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                enabled = otp.length == 6
+            ) {
+                Text("Verify", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            TextButton(onClick = onBack) {
+                Text("Back", color = tealColor, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun ResetPasswordScreen(
+    email: String,
+    onBack: () -> Unit,
+    onReset: (String) -> Unit
+) {
+    var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    
+    val tealColor = MaterialTheme.colorScheme.primary
+    val textColor = MaterialTheme.colorScheme.onBackground
+    val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
+    
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Text("New Password", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = textColor)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Set a new password for $email", fontSize = 14.sp, color = subtitleColor, textAlign = TextAlign.Center)
+            
+            Spacer(modifier = Modifier.height(40.dp))
+            
+            CustomTextField(
+                label = "New Password",
+                value = password,
+                onValueChange = { password = it },
+                isPassword = true
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            CustomTextField(
+                label = "Confirm Password",
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                isPassword = true
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Button(
+                onClick = { onReset(password) },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                enabled = password.isNotEmpty() && password == confirmPassword
+            ) {
+                Text("Reset Password", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            TextButton(onClick = onBack) {
+                Text("Cancel", color = tealColor, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}

@@ -534,10 +534,47 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun resetPassword(email: String, onSuccess: () -> Unit) {
+    fun forgotPasswordApi(email: String, onSuccess: (String) -> Unit) {
         viewModelScope.launch {
-            if (_userEmail.value == email) {
+            isLoading = true
+            errorMessage = null
+            try {
+                val res = RetrofitClient.instance.forgotPassword(ForgotPasswordRequest(email))
+                onSuccess(res.otp ?: "")
+            } catch(e: Exception) {
+                errorMessage = "Failed: ${e.message}"
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    fun verifyOtpApi(email: String, otp: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+            try {
+                RetrofitClient.instance.verifyOtp(VerifyOTPRequest(email, otp))
                 onSuccess()
+            } catch(e: Exception) {
+                errorMessage = "Failed: ${e.message}"
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    fun resetPasswordApi(email: String, otp: String, newPass: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+            try {
+                RetrofitClient.instance.resetPassword(ResetPasswordRequest(email, otp, newPass))
+                onSuccess()
+            } catch(e: Exception) {
+                errorMessage = "Failed: ${e.message}"
+            } finally {
+                isLoading = false
             }
         }
     }

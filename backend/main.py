@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import joblib
 import os
+import random
 from typing import List
 from passlib.context import CryptContext
 import jwt
@@ -40,8 +41,18 @@ try:
                         col_type = column.type.compile(engine.dialect)
                         conn.execute(text(f"ALTER TABLE stress_checkins ADD COLUMN {column.name} {col_type}"))
                         print(f"Added missing column: {column.name}")
-                    except Exception as col_e:
                         print(f"Failed to add column {column.name}: {col_e}")
+
+        if 'users' in inspector.get_table_names():
+            columns = [col['name'] for col in inspector.get_columns('users')]
+            for column in models.User.__table__.columns:
+                if column.name not in columns:
+                    try:
+                        col_type = column.type.compile(engine.dialect)
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {column.name} {col_type}"))
+                    except Exception as col_e:
+                        pass
+                        
             
             try:
                 conn.commit()
@@ -131,6 +142,50 @@ def login(user_credentials: schemas.UserLogin, db: Session = Depends(get_db)):
     
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@app.post("/forgot-password")
+def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = crud.get_user_by_email(db, email=request.email)
+    if not user:
+        raise HTTPException(status_code=404, detail="Email not found")
+        
+    otp = str(random.randint(100000, 999999))
+    user.reset_otp = otp
+    user.reset_otp_expires_at = datetime.utcnow() + timedelta(minutes=15)
+    db.commit()
+    
+    # In Phase 1, we return the OTP for testing instead of emailing it.
+    return {"message": "OTP generated", "otp": otp}
+
+@app.post("/verify-otp")
+def verify_otp(request: schemas.VerifyOTPRequest, db: Session = Depends(get_db)):
+    user = crud.get_user_by_email(db, email=request.email)
+    if not user or user.reset_otp != request.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+        
+    if not user.reset_otp_expires_at or user.reset_otp_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="OTP expired")
+        
+    return {"message": "OTP verified successfully"}
+
+@app.post("/reset-password")
+def reset_password(request: schemas.ResetPasswordRequest, db: Session = Depends(get_db)):
+    user = crud.get_user_by_email(db, email=request.email)
+    if not user or user.reset_otp != request.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+        
+    if not user.reset_otp_expires_at or user.reset_otp_expires_at < datetime.utcnow():
+        raise HTTPException(status_code=400, detail="OTP expired")
+        
+    if len(request.new_password) > 64:
+        raise HTTPException(status_code=400, detail="Password cannot be longer than 64 characters")
+        
+    user.hashed_password = get_password_hash(request.new_password)
+    user.reset_otp = None
+    user.reset_otp_expires_at = None
+    db.commit()
+    
+    return {"message": "Password reset successful"}
 
 
 # ============================================

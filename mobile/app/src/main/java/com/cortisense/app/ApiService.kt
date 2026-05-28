@@ -36,6 +36,11 @@ data class TokenResponse(
     @SerializedName("token_type") val tokenType: String
 )
 
+data class ForgotPasswordRequest(@SerializedName("email") val email: String)
+data class VerifyOTPRequest(@SerializedName("email") val email: String, @SerializedName("otp") val otp: String)
+data class ResetPasswordRequest(@SerializedName("email") val email: String, @SerializedName("otp") val otp: String, @SerializedName("new_password") val newPassword: String)
+data class GenericMessageResponse(@SerializedName("message") val message: String, @SerializedName("otp") val otp: String? = null)
+
 // ===============================
 // REQUEST MODEL
 // ===============================
@@ -154,6 +159,15 @@ interface ApiService {
     @POST("/login")
     suspend fun login(@Body request: LoginRequest): TokenResponse
 
+    @POST("/forgot-password")
+    suspend fun forgotPassword(@Body request: ForgotPasswordRequest): GenericMessageResponse
+
+    @POST("/verify-otp")
+    suspend fun verifyOtp(@Body request: VerifyOTPRequest): GenericMessageResponse
+
+    @POST("/reset-password")
+    suspend fun resetPassword(@Body request: ResetPasswordRequest): GenericMessageResponse
+
     @POST("/checkin")
     suspend fun sendCheckIn(
         @Body request: CheckInRequest
@@ -177,8 +191,9 @@ object RetrofitClient {
     private val authInterceptor = Interceptor { chain ->
         val original = chain.request()
         
-        // Skip auth for register and login
-        if (original.url.encodedPath.contains("/login") || original.url.encodedPath.contains("/register")) {
+        // Skip auth for register and login and forgot-password flows
+        val path = original.url.encodedPath
+        if (path.contains("/login") || path.contains("/register") || path.contains("/forgot-password") || path.contains("/verify-otp") || path.contains("/reset-password")) {
             return@Interceptor chain.proceed(original)
         }
         
