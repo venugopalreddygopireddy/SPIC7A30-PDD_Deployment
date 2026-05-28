@@ -41,8 +41,8 @@ try:
                         col_type = column.type.compile(engine.dialect)
                         conn.execute(text(f"ALTER TABLE stress_checkins ADD COLUMN {column.name} {col_type}"))
                         print(f"Added missing column: {column.name}")
+                    except Exception as col_e:
                         print(f"Failed to add column {column.name}: {col_e}")
-
         if 'users' in inspector.get_table_names():
             columns = [col['name'] for col in inspector.get_columns('users')]
             for column in models.User.__table__.columns:
