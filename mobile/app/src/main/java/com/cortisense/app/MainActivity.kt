@@ -233,6 +233,7 @@ class MainActivity : AppCompatActivity() {
                             )
                         }
                         composable("signup") {
+                            val context = LocalContext.current
                             SignupScreen(
                                 backendError = viewModel.errorMessage,
                                 isLoading = viewModel.isLoading,
@@ -249,7 +250,12 @@ class MainActivity : AppCompatActivity() {
                                         email = email,
                                         pass = password,
                                         onSuccess = {
-                                            navController.navigate("profile_setup") {
+                                            android.widget.Toast.makeText(
+                                                context, 
+                                                "Account created successfully. Please sign in.", 
+                                                android.widget.Toast.LENGTH_LONG
+                                            ).show()
+                                            navController.navigate("login") {
                                                 popUpTo("signup") { inclusive = true }
                                             }
                                         }

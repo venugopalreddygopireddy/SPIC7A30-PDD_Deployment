@@ -501,13 +501,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             errorMessage = null
             try {
                 val req = RegisterRequest(firstName, lastName, age, gender, email, pass)
-                val res = RetrofitClient.instance.register(req)
-                preferenceManager.saveJwtToken(res.accessToken)
-                
-                preferenceManager.saveRegistration("$firstName $lastName", email, pass)
-                currentUserEmail = email
-                currentUserName = "$firstName $lastName"
-                preferenceManager.setLoggedIn(true)
+                RetrofitClient.instance.register(req)
+                // DO NOT automatically log in or save JWT. Force user to sign in.
                 onSuccess()
             } catch(e: Exception) {
                 errorMessage = "Registration Failed: ${e.message}"
