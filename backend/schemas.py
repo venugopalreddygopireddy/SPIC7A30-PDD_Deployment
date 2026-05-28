@@ -180,3 +180,15 @@ class FactorsResponse(BaseModel):
     top_mood: str
     top_workload: str
     top_exercise: str
+
+class DashboardSummaryResponse(BaseModel):
+    total_checkins: int
+    latest_stress_score: int
+    latest_sleep_duration: float
+    latest_stress_category: str
+    current_streak: int
+    longest_streak: int
+    today_checkins_count: int
+    today_lowest_score: int
+    avg_stress_this_week: int
+    best_day_this_week: str

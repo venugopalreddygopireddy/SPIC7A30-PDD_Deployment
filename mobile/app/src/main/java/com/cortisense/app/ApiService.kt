@@ -192,13 +192,26 @@ data class TrendsResponse(
 )
 
 data class FactorsResponse(
-    @SerializedName("sleep_avg") val sleepAvg: Float,
-    @SerializedName("screen_time_avg") val screenTimeAvg: Float,
-    @SerializedName("caffeine_avg") val caffeineAvg: Float,
-    @SerializedName("physical_activity_avg") val physicalActivityAvg: Float,
+    @SerializedName("sleep_avg") val sleepAvg: Double,
+    @SerializedName("screen_time_avg") val screenTimeAvg: Double,
+    @SerializedName("caffeine_avg") val caffeineAvg: Double,
+    @SerializedName("physical_activity_avg") val physicalActivityAvg: Double,
     @SerializedName("top_mood") val topMood: String,
     @SerializedName("top_workload") val topWorkload: String,
     @SerializedName("top_exercise") val topExercise: String
+)
+
+data class DashboardSummaryResponse(
+    @SerializedName("total_checkins") val totalCheckins: Int,
+    @SerializedName("latest_stress_score") val latestStressScore: Int,
+    @SerializedName("latest_sleep_duration") val latestSleepDuration: Double,
+    @SerializedName("latest_stress_category") val latestStressCategory: String,
+    @SerializedName("current_streak") val currentStreak: Int,
+    @SerializedName("longest_streak") val longestStreak: Int,
+    @SerializedName("today_checkins_count") val todayCheckinsCount: Int,
+    @SerializedName("today_lowest_score") val todayLowestScore: Int,
+    @SerializedName("avg_stress_this_week") val avgStressThisWeek: Int,
+    @SerializedName("best_day_this_week") val bestDayThisWeek: String
 )
 
 
@@ -242,6 +255,9 @@ interface ApiService {
 
     @GET("/analytics/factors")
     suspend fun getFactorsAnalytics(): FactorsResponse
+
+    @GET("/dashboard/summary")
+    suspend fun getDashboardSummary(): DashboardSummaryResponse
 }
 
 

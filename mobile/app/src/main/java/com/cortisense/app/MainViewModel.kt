@@ -247,6 +247,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     if (!token.isNullOrEmpty()) {
                         fetchAnalytics()
                         fetchHistory()
+                        fetchDashboardSummary()
                     }
                 }
             } }
@@ -309,10 +310,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun loadUserData(email: String) {
+        // Disabled to prevent overriding PostgreSQL remote backend data
+        /*
         viewModelScope.launch {
             stressDao.getRecordsForUser(email).collect { 
-                _history.value = it 
-                updateDashboardMetrics(it)
+                // _history.value = it 
+                // updateDashboardMetrics(it)
             }
         }
         
@@ -321,7 +324,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (checkIns.isNotEmpty()) {
                     val latest = checkIns.first()
                     // Dynamically set UI stats based on the latest real data
-                    sleepHours = "${latest.sleepDuration} hrs"
+                    // sleepHours = "${latest.sleepDuration} hrs"
                     
                     // Since heart rate isn't directly input, we dynamically simulate it based on stress score (higher stress = higher HR)
                     val calculatedHr = 65 + (latest.score / 2)
@@ -332,13 +335,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     emotionalScore = (100 - (latest.score * 1.2)).toInt().coerceIn(0, 100)
                     physicalScore = (100 - (latest.score * 0.8)).toInt().coerceIn(0, 100)
                     
-                    // Update today's sleep for the main dashboard card
                     val hours = latest.sleepDuration.toInt()
                     val minutes = ((latest.sleepDuration - hours) * 60).toInt()
-                    _todaySleepDuration.value = "${hours}h ${minutes}m"
+                    // _todaySleepDuration.value = "${hours}h ${minutes}m"
                 }
             }
         }
+        */
     }
 
     private fun updateDashboardMetrics(records: List<StressRecord>) {
@@ -543,6 +546,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _userEmail.value = email
                 fetchAnalytics()
                 fetchHistory()
+                fetchDashboardSummary()
                 
                 onSuccess()
             } catch(e: Exception) {
@@ -760,6 +764,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 updateStreak()
                 fetchAnalytics()
                 fetchHistory()
+                fetchDashboardSummary()
                 onSuccess(response)
             } catch (e: Exception) {
                 errorMessage = "API Error: ${e.message}"
@@ -964,6 +969,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             database.clearAllTables()
             preferenceManager.clearAll()
             onSuccess()
+        }
+    }
+
+    fun fetchDashboardSummary() {
+        viewModelScope.launch {
+            try {
+                val token = preferenceManager.jwtToken.firstOrNull()
+                if (!token.isNullOrEmpty()) {
+                    val summary = RetrofitClient.instance.getDashboardSummary()
+                    
+                    _totalCheckins.value = summary.totalCheckins.toString()
+                    _currentStreak.value = summary.currentStreak.toString()
+                    _longestStreak.value = summary.longestStreak.toString()
+                    _todayCheckinsCount.value = summary.todayCheckinsCount
+                    _todayLowestScore.value = summary.todayLowestScore
+                    _avgStressThisWeek.value = summary.avgStressThisWeek
+                    _bestDayThisWeek.value = summary.bestDayThisWeek
+                    
+                    if (summary.totalCheckins > 0) {
+                        stressScore = summary.latestStressScore
+                        stressLevel = summary.latestStressCategory
+                        sleepHours = "${summary.latestSleepDuration} hrs"
+                        
+                        val sleepDec = summary.latestSleepDuration
+                        val hrs = sleepDec.toInt()
+                        val mins = ((sleepDec - hrs) * 60).toInt()
+                        _todaySleepDuration.value = "${hrs}h ${mins}m"
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 

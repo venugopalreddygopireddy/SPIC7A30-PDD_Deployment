@@ -635,3 +635,84 @@ def get_factors_analytics(db: Session = Depends(get_db), current_user: models.Us
         "top_workload": top(workloads),
         "top_exercise": top(exercises)
     }
+
+@app.get("/dashboard/summary", response_model=schemas.DashboardSummaryResponse)
+def get_dashboard_summary(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    checkins = crud.get_checkins(db, user_id=current_user.id, limit=10000)
+    
+    total_checkins = len(checkins)
+    if not checkins:
+        return {
+            "total_checkins": 0,
+            "latest_stress_score": 0,
+            "latest_sleep_duration": 0.0,
+            "latest_stress_category": "No Data",
+            "current_streak": 0,
+            "longest_streak": 0,
+            "today_checkins_count": 0,
+            "today_lowest_score": 0,
+            "avg_stress_this_week": 0,
+            "best_day_this_week": "None"
+        }
+    
+    latest = checkins[0]
+    
+    # Calculate Streaks
+    dates = sorted(list(set([c.timestamp.date() for c in checkins])), reverse=True)
+    current_streak = 0
+    longest_streak = 0
+    temp_streak = 0
+    prev_date = None
+    
+    import datetime
+    today = datetime.datetime.utcnow().date()
+    yesterday = today - datetime.timedelta(days=1)
+    
+    # Simple streak calculation
+    if dates and (dates[0] == today or dates[0] == yesterday):
+        current_streak = 1
+        for i in range(1, len(dates)):
+            if (dates[i-1] - dates[i]).days == 1:
+                current_streak += 1
+            else:
+                break
+    
+    # Longest streak calculation
+    if dates:
+        temp_streak = 1
+        longest_streak = 1
+        for i in range(1, len(dates)):
+            if (dates[i-1] - dates[i]).days == 1:
+                temp_streak += 1
+                if temp_streak > longest_streak:
+                    longest_streak = temp_streak
+            else:
+                temp_streak = 1
+                
+    # Today stats
+    today_checkins = [c for c in checkins if c.timestamp.date() == today]
+    today_count = len(today_checkins)
+    today_lowest = min([c.score for c in today_checkins]) if today_checkins else 0
+    
+    # This week stats
+    one_week_ago = today - datetime.timedelta(days=7)
+    week_checkins = [c for c in checkins if c.timestamp.date() > one_week_ago]
+    avg_week = int(sum([c.score for c in week_checkins]) / len(week_checkins)) if week_checkins else 0
+    
+    best_day = "None"
+    if week_checkins:
+        best_c = min(week_checkins, key=lambda x: x.score)
+        best_day = best_c.timestamp.strftime("%A")
+        
+    return {
+        "total_checkins": total_checkins,
+        "latest_stress_score": latest.score,
+        "latest_sleep_duration": latest.sleep_duration or 0.0,
+        "latest_stress_category": latest.stress_level,
+        "current_streak": current_streak,
+        "longest_streak": longest_streak,
+        "today_checkins_count": today_count,
+        "today_lowest_score": today_lowest,
+        "avg_stress_this_week": avg_week,
+        "best_day_this_week": best_day
+    }
