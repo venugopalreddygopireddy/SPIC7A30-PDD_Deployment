@@ -134,6 +134,14 @@ class StressCheckInResponse(BaseModel):
 
     is_escalated: bool
 
+    sleep_duration: float
+    sleep_quality: int
+    physical_activity: int
+    screen_time: float
+    workload: str
+    mood: str
+    anxiety: str
+
     class Config:
         from_attributes = True
 

@@ -246,6 +246,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val token = preferenceManager.jwtToken.firstOrNull()
                     if (!token.isNullOrEmpty()) {
                         fetchAnalytics()
+                        fetchHistory()
                     }
                 }
             } }
@@ -541,6 +542,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 currentUserEmail = email
                 _userEmail.value = email
                 fetchAnalytics()
+                fetchHistory()
                 
                 onSuccess()
             } catch(e: Exception) {
@@ -757,6 +759,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 
                 updateStreak()
                 fetchAnalytics()
+                fetchHistory()
                 onSuccess(response)
             } catch (e: Exception) {
                 errorMessage = "API Error: ${e.message}"
@@ -961,6 +964,51 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             database.clearAllTables()
             preferenceManager.clearAll()
             onSuccess()
+        }
+    }
+
+    fun fetchHistory() {
+        viewModelScope.launch {
+            try {
+                val token = preferenceManager.jwtToken.firstOrNull()
+                if (!token.isNullOrEmpty()) {
+                    val apiHistory = RetrofitClient.instance.getHistory()
+                    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
+                    val mappedRecords = apiHistory.map { response ->
+                        val factors = listOf(
+                            "Sleep Duration: ${response.sleepDuration} hrs",
+                            "Sleep Quality: ${response.sleepQuality}/10",
+                            "Physical Activity: ${response.physicalActivity} min",
+                            "Screen Time: ${response.screenTime} hrs",
+                            "Workload: ${response.workload}",
+                            "Mood: ${response.mood}",
+                            "Anxiety: ${response.anxiety}",
+                            "AI Recommendation: ${response.recommendation}"
+                        )
+                        var time = System.currentTimeMillis()
+                        try {
+                            // truncate fractional seconds and Z from timestamp for simple parsing
+                            val timeStr = if (response.timestamp.contains(".")) response.timestamp.substringBefore(".") else response.timestamp
+                            time = sdf.parse(timeStr)?.time ?: System.currentTimeMillis()
+                        } catch (e: Exception) {}
+
+                        StressRecord(
+                            id = response.id.toLong(),
+                            userEmail = currentUserEmail,
+                            score = response.score,
+                            level = response.stressLevel,
+                            reasons = factors,
+                            timestamp = time,
+                            cognitiveScore = response.score / 3,
+                            emotionalScore = response.score / 3,
+                            physicalScore = response.score / 3
+                        )
+                    }
+                    _history.value = mappedRecords
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 

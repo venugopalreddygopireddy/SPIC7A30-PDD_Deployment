@@ -146,6 +146,22 @@ data class StressResponse(
     val isEscalated: Boolean = false
 )
 
+data class StressCheckInResponse(
+    @SerializedName("id") val id: Int,
+    @SerializedName("timestamp") val timestamp: String,
+    @SerializedName("stress_level") val stressLevel: String,
+    @SerializedName("score") val score: Int,
+    @SerializedName("recommendation") val recommendation: String,
+    @SerializedName("is_escalated") val isEscalated: Boolean,
+    @SerializedName("sleep_duration") val sleepDuration: Double,
+    @SerializedName("sleep_quality") val sleepQuality: Int,
+    @SerializedName("physical_activity") val physicalActivity: Int,
+    @SerializedName("screen_time") val screenTime: Double,
+    @SerializedName("workload") val workload: String,
+    @SerializedName("mood") val mood: String,
+    @SerializedName("anxiety") val anxiety: String
+)
+
 // ===============================
 // ANALYTICS MODELS
 // ===============================
@@ -213,7 +229,7 @@ interface ApiService {
     ): StressResponse
 
     @GET("/history")
-    suspend fun getHistory(): List<StressResponse> // We map StressResponse partially for history. Wait, history schema returns StressCheckInResponse.
+    suspend fun getHistory(): List<StressCheckInResponse>
 
     @GET("/analytics/weekly")
     suspend fun getWeeklyAnalytics(): WeeklyAnalyticsResponse
