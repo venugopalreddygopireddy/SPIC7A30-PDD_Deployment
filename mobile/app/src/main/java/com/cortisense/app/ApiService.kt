@@ -146,6 +146,45 @@ data class StressResponse(
     val isEscalated: Boolean = false
 )
 
+// ===============================
+// ANALYTICS MODELS
+// ===============================
+
+data class WeeklyAnalyticsResponse(
+    @SerializedName("avg_score") val avgScore: Int,
+    @SerializedName("highest_score") val highestScore: Int,
+    @SerializedName("lowest_score") val lowestScore: Int,
+    @SerializedName("total_checkins") val totalCheckins: Int,
+    @SerializedName("distribution") val distribution: Map<String, Int>
+)
+
+data class MonthlyAnalyticsResponse(
+    @SerializedName("avg_score") val avgScore: Int,
+    @SerializedName("total_checkins") val totalCheckins: Int,
+    @SerializedName("distribution") val distribution: Map<String, Int>,
+    @SerializedName("calendar_activity") val calendarActivity: Map<String, Int>
+)
+
+data class DailyTrend(
+    @SerializedName("date") val date: String,
+    @SerializedName("score") val score: Int,
+    @SerializedName("level") val level: String
+)
+
+data class TrendsResponse(
+    @SerializedName("trends") val trends: List<DailyTrend>
+)
+
+data class FactorsResponse(
+    @SerializedName("sleep_avg") val sleepAvg: Float,
+    @SerializedName("screen_time_avg") val screenTimeAvg: Float,
+    @SerializedName("caffeine_avg") val caffeineAvg: Float,
+    @SerializedName("physical_activity_avg") val physicalActivityAvg: Float,
+    @SerializedName("top_mood") val topMood: String,
+    @SerializedName("top_workload") val topWorkload: String,
+    @SerializedName("top_exercise") val topExercise: String
+)
+
 
 // ===============================
 // API SERVICE
@@ -175,6 +214,18 @@ interface ApiService {
 
     @GET("/history")
     suspend fun getHistory(): List<StressResponse> // We map StressResponse partially for history. Wait, history schema returns StressCheckInResponse.
+
+    @GET("/analytics/weekly")
+    suspend fun getWeeklyAnalytics(): WeeklyAnalyticsResponse
+
+    @GET("/analytics/monthly")
+    suspend fun getMonthlyAnalytics(): MonthlyAnalyticsResponse
+
+    @GET("/analytics/trends")
+    suspend fun getTrendsAnalytics(): TrendsResponse
+
+    @GET("/analytics/factors")
+    suspend fun getFactorsAnalytics(): FactorsResponse
 }
 
 

@@ -516,3 +516,122 @@ def read_checkin(
         )
 
     return db_checkin
+
+# ============================================
+# ANALYTICS APIs
+# ============================================
+
+from collections import Counter
+
+@app.get("/analytics/weekly", response_model=schemas.WeeklyAnalyticsResponse)
+def get_weekly_analytics(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    checkins = crud.get_checkins(db, user_id=current_user.id, limit=1000)
+    week_ago = datetime.utcnow() - timedelta(days=7)
+    recent = [c for c in checkins if c.timestamp >= week_ago]
+    
+    if not recent:
+        return {"avg_score": 0, "highest_score": 0, "lowest_score": 0, "total_checkins": 0, "distribution": {"low": 0, "moderate": 0, "high": 0}}
+        
+    scores = [c.score for c in recent]
+    distribution = {"low": 0, "moderate": 0, "high": 0}
+    for c in recent:
+        if "low" in c.stress_level.lower():
+            distribution["low"] += 1
+        elif "moderate" in c.stress_level.lower():
+            distribution["moderate"] += 1
+        else:
+            distribution["high"] += 1
+            
+    return {
+        "avg_score": sum(scores) // len(scores),
+        "highest_score": max(scores),
+        "lowest_score": min(scores),
+        "total_checkins": len(recent),
+        "distribution": distribution
+    }
+
+@app.get("/analytics/monthly", response_model=schemas.MonthlyAnalyticsResponse)
+def get_monthly_analytics(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    checkins = crud.get_checkins(db, user_id=current_user.id, limit=1000)
+    month_ago = datetime.utcnow() - timedelta(days=30)
+    recent = [c for c in checkins if c.timestamp >= month_ago]
+    
+    if not recent:
+        return {"avg_score": 0, "total_checkins": 0, "distribution": {"low": 0, "moderate": 0, "high": 0}, "calendar_activity": {}}
+        
+    scores = [c.score for c in recent]
+    distribution = {"low": 0, "moderate": 0, "high": 0}
+    calendar_activity = {}
+    for c in recent:
+        if "low" in c.stress_level.lower():
+            distribution["low"] += 1
+        elif "moderate" in c.stress_level.lower():
+            distribution["moderate"] += 1
+        else:
+            distribution["high"] += 1
+            
+        date_str = c.timestamp.strftime("%Y-%m-%d")
+        if date_str not in calendar_activity or calendar_activity[date_str] < c.score:
+            calendar_activity[date_str] = c.score
+            
+    return {
+        "avg_score": sum(scores) // len(scores),
+        "total_checkins": len(recent),
+        "distribution": distribution,
+        "calendar_activity": calendar_activity
+    }
+
+@app.get("/analytics/trends", response_model=schemas.TrendsResponse)
+def get_trends_analytics(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    checkins = crud.get_checkins(db, user_id=current_user.id, limit=1000)
+    week_ago = datetime.utcnow() - timedelta(days=7)
+    recent = [c for c in checkins if c.timestamp >= week_ago]
+    
+    daily_stats = {}
+    for c in recent:
+        date_str = c.timestamp.strftime("%Y-%m-%d")
+        if date_str not in daily_stats:
+            daily_stats[date_str] = {"scores": [], "levels": []}
+        daily_stats[date_str]["scores"].append(c.score)
+        daily_stats[date_str]["levels"].append(c.stress_level)
+        
+    trends = []
+    for date_str, stats in daily_stats.items():
+        avg = sum(stats["scores"]) // len(stats["scores"])
+        most_common_level = max(set(stats["levels"]), key=stats["levels"].count)
+        trends.append({"date": date_str, "score": avg, "level": most_common_level})
+        
+    trends.sort(key=lambda x: x["date"])
+    return {"trends": trends}
+
+@app.get("/analytics/factors", response_model=schemas.FactorsResponse)
+def get_factors_analytics(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    checkins = crud.get_checkins(db, user_id=current_user.id, limit=1000)
+    
+    if not checkins:
+        return {
+            "sleep_avg": 0.0, "screen_time_avg": 0.0, "caffeine_avg": 0.0, "physical_activity_avg": 0.0,
+            "top_mood": "None", "top_workload": "None", "top_exercise": "None"
+        }
+        
+    sleep = [c.sleep_duration for c in checkins if c.sleep_duration is not None]
+    screen = [c.screen_time for c in checkins if c.screen_time is not None]
+    caffeine = [c.caffeine_intake for c in checkins if c.caffeine_intake is not None]
+    physical = [c.physical_activity for c in checkins if c.physical_activity is not None]
+    
+    moods = [c.mood for c in checkins if c.mood]
+    workloads = [c.workload for c in checkins if c.workload]
+    exercises = [c.exercise_type for c in checkins if c.exercise_type]
+    
+    def avg(lst): return sum(lst) / len(lst) if lst else 0.0
+    def top(lst): return Counter(lst).most_common(1)[0][0] if lst else "None"
+    
+    return {
+        "sleep_avg": avg(sleep),
+        "screen_time_avg": avg(screen),
+        "caffeine_avg": avg(caffeine),
+        "physical_activity_avg": avg(physical),
+        "top_mood": top(moods),
+        "top_workload": top(workloads),
+        "top_exercise": top(exercises)
+    }

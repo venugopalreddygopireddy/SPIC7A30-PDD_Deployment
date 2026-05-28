@@ -136,3 +136,39 @@ class StressCheckInResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+# =========================================================
+# ANALYTICS RESPONSE
+# =========================================================
+
+from typing import Dict, List, Any
+
+class WeeklyAnalyticsResponse(BaseModel):
+    avg_score: int
+    highest_score: int
+    lowest_score: int
+    total_checkins: int
+    distribution: Dict[str, int]
+
+class MonthlyAnalyticsResponse(BaseModel):
+    avg_score: int
+    total_checkins: int
+    distribution: Dict[str, int]
+    calendar_activity: Dict[str, int]
+
+class DailyTrend(BaseModel):
+    date: str
+    score: int
+    level: str
+
+class TrendsResponse(BaseModel):
+    trends: List[DailyTrend]
+
+class FactorsResponse(BaseModel):
+    sleep_avg: float
+    screen_time_avg: float
+    caffeine_avg: float
+    physical_activity_avg: float
+    top_mood: str
+    top_workload: str
+    top_exercise: str

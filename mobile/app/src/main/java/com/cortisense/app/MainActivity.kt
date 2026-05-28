@@ -2580,7 +2580,8 @@ fun AnalyticsScreen(viewModel: MainViewModel, navController: NavHostController, 
 
 @Composable
 fun StressTrendsScreen(viewModel: MainViewModel) {
-    val history by viewModel.history.collectAsState()
+    val trendsData by viewModel.trendsAnalytics.collectAsState()
+    val monthlyData by viewModel.monthlyAnalytics.collectAsState()
     
     Column(
         modifier = Modifier
@@ -2599,7 +2600,7 @@ fun StressTrendsScreen(viewModel: MainViewModel) {
                 Text(stringResource(R.string.stress_trends), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                 Text(stringResource(R.string.daily_avg_stress), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(32.dp))
-                StressWaveGraph(history = history)
+                StressWaveGraph(trends = trendsData?.trends)
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     val sdfLabel = SimpleDateFormat("EEE", Locale.getDefault())
@@ -2623,14 +2624,14 @@ fun StressTrendsScreen(viewModel: MainViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        StreakCalendar(history = history)
+        StreakCalendar(activity = monthlyData?.calendarActivity)
         
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
 @Composable
-fun StressWaveGraph(history: List<StressRecord>) {
+fun StressWaveGraph(trends: List<DailyTrend>?) {
     // Get last 7 days including today
     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     
@@ -2647,8 +2648,7 @@ fun StressWaveGraph(history: List<StressRecord>) {
         sdf.format(c.time)
     }
     
-    val dailyScores = history.groupBy { sdf.format(Date(it.timestamp)) }
-        .mapValues { entry -> entry.value.map { it.score }.average().toFloat() }
+    val dailyScores = trends?.associate { it.date to it.score.toFloat() } ?: emptyMap()
     
     val scores = weekDays.map { dailyScores[it] ?: 0f }
     val maxScore = 100f
@@ -2791,7 +2791,9 @@ fun AnalyticsOverviewScreen(viewModel: MainViewModel) {
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val tealColor = MaterialTheme.colorScheme.primary
     val currentStreak by viewModel.currentStreak.collectAsState()
-    val trends by viewModel.trends.collectAsState()
+    
+    val weekly by viewModel.weeklyAnalytics.collectAsState()
+    val trendsData by viewModel.trendsAnalytics.collectAsState()
 
     Column(
         modifier = Modifier
@@ -2818,7 +2820,7 @@ fun AnalyticsOverviewScreen(viewModel: MainViewModel) {
                 icon = Icons.Default.TrendingDown,
                 iconTint = tealColor,
                 title = stringResource(R.string.avg_this_week),
-                value = if (trends.isNotEmpty()) "${trends.map { it.score }.average().toInt()}" else "--"
+                value = if (weekly != null) "${weekly?.avgScore}" else "--"
             )
             InfoSquareCard(
                 modifier = Modifier.weight(1f),
@@ -2849,7 +2851,7 @@ fun AnalyticsOverviewScreen(viewModel: MainViewModel) {
                 
                 Spacer(modifier = Modifier.height(32.dp))
                 
-                if (trends.isEmpty()) {
+                if (trendsData == null || trendsData?.trends.isNullOrEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) {
                         Text(stringResource(R.string.extracted_no_data_available), color = subtitleColor)
                     }
@@ -2859,7 +2861,7 @@ fun AnalyticsOverviewScreen(viewModel: MainViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.Bottom
                     ) {
-                        val displayData = trends.take(7).reversed()
+                        val displayData = trendsData!!.trends.takeLast(7)
                         displayData.forEachIndexed { index, record ->
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(text = record.score.toString(), fontSize = 10.sp, color = textColor)
@@ -2869,9 +2871,9 @@ fun AnalyticsOverviewScreen(viewModel: MainViewModel) {
                                         .width(12.dp)
                                         .height((record.score * 1.0).dp)
                                         .background(
-                                            color = when(record.level) {
-                                                "stress_level_low" -> tealColor
-                                                "stress_level_moderate" -> Color(0xFFFFD700)
+                                            color = when {
+                                                record.level.contains("low", ignoreCase = true) -> tealColor
+                                                record.level.contains("moderate", ignoreCase = true) -> Color(0xFFFFD700)
                                                 else -> Color(0xFFFF4B4B)
                                             },
                                             shape = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
@@ -3681,13 +3683,13 @@ fun WeeklyReportScreen(viewModel: MainViewModel) {
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val tealColor = MaterialTheme.colorScheme.primary
-    val history by viewModel.weeklyHistory.collectAsState()
+    val weekly by viewModel.weeklyAnalytics.collectAsState()
     
-    val avgWeekly = if (history.isEmpty()) 0 else history.map { it.score }.average().toInt()
-    val checkIns = history.size
-    val lowDays = history.count { it.level == "Low Stress" || it.level == "stress_level_low" }
-    val moderateDays = history.count { it.level == "Moderate Stress" || it.level == "stress_level_moderate" }
-    val highDays = history.count { it.level == "High Stress" || it.level == "stress_level_high" || it.level == "Critical Stress" || it.level == "stress_level_critical" }
+    val avgWeekly = weekly?.avgScore ?: 0
+    val checkIns = weekly?.totalCheckins ?: 0
+    val lowDays = weekly?.distribution?.get("low") ?: 0
+    val moderateDays = weekly?.distribution?.get("moderate") ?: 0
+    val highDays = weekly?.distribution?.get("high") ?: 0
 
     Column(
         modifier = Modifier
@@ -3714,8 +3716,8 @@ fun WeeklyReportScreen(viewModel: MainViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val highestScore = history.maxOfOrNull { it.score } ?: 0
-        val lowestScoreWeekly = history.minOfOrNull { it.score } ?: 0
+        val highestScore = weekly?.calendarActivity?.values?.maxOrNull() ?: 0
+        val lowestScoreWeekly = weekly?.calendarActivity?.values?.minOrNull() ?: 0
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.CheckCircle, iconTint = tealColor, title = "Check-ins", value = "$checkIns")
             InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.TrendingUp, iconTint = Color(0xFFFF4B4B), title = "Highest Score", value = "$highestScore")
@@ -3752,13 +3754,13 @@ fun MonthlyReportScreen(viewModel: MainViewModel) {
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val tealColor = MaterialTheme.colorScheme.primary
-    val history by viewModel.monthlyHistory.collectAsState()
+    val monthly by viewModel.monthlyAnalytics.collectAsState()
     
-    val avgMonthly = if (history.isEmpty()) 0 else history.map { it.score }.average().toInt()
-    val checkIns = history.size
-    val lowDays = history.count { it.level == "Low Stress" || it.level == "stress_level_low" }
-    val moderateDays = history.count { it.level == "Moderate Stress" || it.level == "stress_level_moderate" }
-    val highDays = history.count { it.level == "High Stress" || it.level == "stress_level_high" || it.level == "Critical Stress" || it.level == "stress_level_critical" }
+    val avgMonthly = monthly?.avgScore ?: 0
+    val checkIns = monthly?.totalCheckins ?: 0
+    val lowDays = monthly?.distribution?.get("low") ?: 0
+    val moderateDays = monthly?.distribution?.get("moderate") ?: 0
+    val highDays = monthly?.distribution?.get("high") ?: 0
 
     Column(
         modifier = Modifier
@@ -3789,8 +3791,8 @@ fun MonthlyReportScreen(viewModel: MainViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val highestScore = history.maxOfOrNull { it.score } ?: 0
-        val lowestScoreMonthly = history.minOfOrNull { it.score } ?: 0
+        val highestScore = monthly?.calendarActivity?.values?.maxOrNull() ?: 0
+        val lowestScoreMonthly = monthly?.calendarActivity?.values?.minOrNull() ?: 0
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.CheckCircle, iconTint = tealColor, title = "Check-ins", value = "$checkIns")
             InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.TrendingDown, iconTint = tealColor, title = "Lowest Score", value = "$lowestScoreMonthly")
@@ -3872,12 +3874,9 @@ fun FactorBreakdownScreen(viewModel: MainViewModel) {
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val tealColor = MaterialTheme.colorScheme.primary
+    val factors by viewModel.factorsAnalytics.collectAsState()
     val history by viewModel.history.collectAsState()
 
-    val allReasons = history.flatMap { it.reasons }
-    val counts = allReasons.groupingBy { it }.eachCount()
-    val sorted = counts.entries.sortedByDescending { it.value }
-    
     val lastCheckin = history.maxByOrNull { it.timestamp }
     val lastCheckinReasons = lastCheckin?.reasons ?: emptyList()
 
@@ -3910,7 +3909,7 @@ fun FactorBreakdownScreen(viewModel: MainViewModel) {
                 Spacer(modifier = Modifier.height(24.dp))
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (sorted.isEmpty()) {
+            if (factors == null) {
                 Text(
                     text = "No check-ins yet to analyze.",
                     fontSize = 14.sp,
@@ -3918,25 +3917,13 @@ fun FactorBreakdownScreen(viewModel: MainViewModel) {
                     modifier = Modifier.padding(vertical = 16.dp)
                 )
             } else {
-                sorted.forEach { (reason, count) ->
-                val percentage = (count * 100 / allReasons.size)
-                val icon = when {
-                    reason.lowercase().contains("sleep") -> Icons.Default.NightsStay
-                    reason.lowercase().contains("workload") -> Icons.Default.Work
-                    reason.lowercase().contains("anxiety") -> Icons.Default.Psychology
-                    reason.lowercase().contains("caffeine") -> Icons.Default.Coffee
-                    reason.lowercase().contains("screen") -> Icons.Default.PhoneAndroid
-                    else -> Icons.Default.Adjust
-                }
-                FactorItem(
-                    icon = icon, 
-                    title = getTranslatedReason(reason), 
-                    impact = if (percentage > 30) stringResource(R.string.factor_high_impact) else if (percentage > 15) stringResource(R.string.factor_medium_impact) else stringResource(R.string.factor_low_impact), 
-                    percentage = percentage, 
-                    color = if (percentage > 30) Color(0xFFFF4B4B) else if (percentage > 15) Color(0xFFFFD700) else tealColor
-                )
+                FactorItem(Icons.Default.NightsStay, "Sleep Duration", "${factors!!.sleepAvg} hrs avg", 100, tealColor)
+                FactorItem(Icons.Default.PhoneAndroid, "Screen Time", "${factors!!.screenTimeAvg} hrs avg", 100, tealColor)
+                FactorItem(Icons.Default.Coffee, "Caffeine Intake", "${factors!!.caffeineAvg} cups avg", 100, tealColor)
+                FactorItem(Icons.Default.DirectionsRun, "Physical Activity", "${factors!!.physicalActivityAvg} hrs avg", 100, tealColor)
+                FactorItem(Icons.Default.Mood, "Top Mood", factors!!.topMood, 100, Color(0xFFFFD700))
+                FactorItem(Icons.Default.Work, "Top Workload", factors!!.topWorkload, 100, Color(0xFFFF4B4B))
             }
-        }
         }
             }
         }

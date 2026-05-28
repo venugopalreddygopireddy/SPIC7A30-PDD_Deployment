@@ -154,6 +154,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _monthlyHistory = MutableStateFlow<List<StressRecord>>(emptyList())
     val monthlyHistory = _monthlyHistory.asStateFlow()
 
+    private val _weeklyAnalytics = MutableStateFlow<WeeklyAnalyticsResponse?>(null)
+    val weeklyAnalytics = _weeklyAnalytics.asStateFlow()
+
+    private val _monthlyAnalytics = MutableStateFlow<MonthlyAnalyticsResponse?>(null)
+    val monthlyAnalytics = _monthlyAnalytics.asStateFlow()
+
+    private val _trendsAnalytics = MutableStateFlow<TrendsResponse?>(null)
+    val trendsAnalytics = _trendsAnalytics.asStateFlow()
+
+    private val _factorsAnalytics = MutableStateFlow<FactorsResponse?>(null)
+    val factorsAnalytics = _factorsAnalytics.asStateFlow()
+
     private val _selectedRecord = MutableStateFlow<StressRecord?>(null)
     val selectedRecord = _selectedRecord.asStateFlow()
 
@@ -225,14 +237,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             launch { preferenceManager.isProfileCreated.collect { _isProfileCreated.value = it } }
             launch { preferenceManager.isLoggedIn.collect { _isLoggedIn.value = it } }
             launch { preferenceManager.jwtToken.collect { _jwtToken.value = it } }
-            launch { preferenceManager.userEmail.collect { 
-                _userEmail.value = it
-                currentUserEmail = it
-                if (it.isNotEmpty()) {
-                    loadUserData(it)
-                    loadNotifications(it)
-                }
-            } }
+            val token = preferenceManager.jwtToken.firstOrNull()
+            if (!token.isNullOrEmpty()) {
+                _isLoggedIn.value = true
+                currentUserEmail = email
+                _userEmail.value = email
+                loadUserData(email)
+                loadNotifications(email)
+                fetchAnalytics()
+            } else {
+                logout()
+            }
             launch { preferenceManager.userName.collect { 
                 _userName.value = it
                 currentUserName = it
@@ -524,6 +539,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 preferenceManager.setLoggedIn(true)
                 currentUserEmail = email
                 _userEmail.value = email
+                fetchAnalytics()
                 
                 onSuccess()
             } catch(e: Exception) {
@@ -739,6 +755,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 checkInRepository.insert(clinicalEntity)
                 
                 updateStreak()
+                fetchAnalytics()
                 onSuccess(response)
             } catch (e: Exception) {
                 errorMessage = "API Error: ${e.message}"
@@ -946,7 +963,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-                                                                                                                                                                                                                                                                                                                                                                fun downloadUserData(onComplete: (String) -> Unit) {}
+    fun fetchAnalytics() {
+        viewModelScope.launch {
+            try {
+                _weeklyAnalytics.value = RetrofitClient.instance.getWeeklyAnalytics()
+                _monthlyAnalytics.value = RetrofitClient.instance.getMonthlyAnalytics()
+                _trendsAnalytics.value = RetrofitClient.instance.getTrendsAnalytics()
+                _factorsAnalytics.value = RetrofitClient.instance.getFactorsAnalytics()
+            } catch (e: Exception) {
+                // Silently handle or log error
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun downloadUserData(onComplete: (String) -> Unit) {}
     fun buyPremium(onComplete: (String) -> Unit) {}
     fun backupChatHistory(onComplete: (String) -> Unit) {}
     fun restoreChatHistory(uri: Uri, onComplete: (String) -> Unit) {}
