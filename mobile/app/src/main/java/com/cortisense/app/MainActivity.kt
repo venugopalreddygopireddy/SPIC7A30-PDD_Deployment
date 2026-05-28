@@ -265,7 +265,6 @@ class MainActivity : AppCompatActivity() {
                             )
                         }
                         composable("forgot_password") {
-                            val context = LocalContext.current
                             ForgotPasswordScreen(
                                 onBackToLogin = { navController.popBackStack() },
                                 onPasswordReset = { email -> 
@@ -277,7 +276,8 @@ class MainActivity : AppCompatActivity() {
                                         ).show()
                                         navController.navigate("verify_otp/$email")
                                     }
-                                }
+                                },
+                                viewModel = viewModel
                             )
                         }
                         composable(
@@ -1361,12 +1361,19 @@ fun LoginScreen(
 @Composable
 fun ForgotPasswordScreen(
     onBackToLogin: () -> Unit,
-    onPasswordReset: (String) -> Unit
+    onPasswordReset: (String) -> Unit,
+    viewModel: MainViewModel
 ) {
     var email by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(viewModel.errorMessage) {
+        if (viewModel.errorMessage != null) {
+            errorMessage = viewModel.errorMessage
+            viewModel.errorMessage = null
+        }
+    }
     
     val context = LocalContext.current
 
@@ -1457,16 +1464,20 @@ fun ForgotPasswordScreen(
                         errorMessage = context.getString(R.string.invalid_email)
                     } else {
                         onPasswordReset(email)
-                        successMessage = context.getString(R.string.reset_link_sent)
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = tealColor),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                enabled = !viewModel.isLoading
             ) {
-                Text(stringResource(R.string.send_reset_link_btn), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                if (viewModel.isLoading) {
+                    androidx.compose.material3.CircularProgressIndicator(color = MaterialTheme.colorScheme.surface, modifier = Modifier.size(24.dp))
+                } else {
+                    Text("Send OTP", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
 
@@ -1476,13 +1487,6 @@ fun ForgotPasswordScreen(
                 Text(stringResource(R.string.back_to_signin), color = subtitleColor)
             }
         }
-    }
-}
-
-@Composable
-fun ForgotPasswordPreview() {
-    CortiSenseTheme {
-        ForgotPasswordScreen(onBackToLogin = {}, onPasswordReset = {})
     }
 }
 
