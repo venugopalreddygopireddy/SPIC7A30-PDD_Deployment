@@ -7,6 +7,9 @@ import pandas as pd
 import joblib
 import os
 import random
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from typing import List
 from passlib.context import CryptContext
 import jwt
@@ -143,6 +146,36 @@ def login(user_credentials: schemas.UserLogin, db: Session = Depends(get_db)):
     access_token = create_access_token(data={"sub": user.email})
     return {"access_token": access_token, "token_type": "bearer"}
 
+def send_otp_email(to_email: str, otp: str):
+    sender_email = os.getenv("EMAIL_ADDRESS")
+    sender_password = os.getenv("EMAIL_PASSWORD")
+    
+    if not sender_email or not sender_password:
+        print("SMTP WARNING: EMAIL_ADDRESS or EMAIL_PASSWORD env vars are not set.")
+        return False
+        
+    try:
+        msg = MIMEMultipart()
+        msg['From'] = sender_email
+        msg['To'] = to_email
+        msg['Subject'] = "CortiSense Password Reset OTP"
+        
+        body = f"Your CortiSense password reset OTP is: {otp}\nIt expires in 15 minutes."
+        msg.attach(MIMEText(body, 'plain'))
+        
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(sender_email, sender_password)
+        print("SMTP login successful")
+        print(f"Sending OTP to {to_email}...")
+        server.send_message(msg)
+        server.quit()
+        print("Email sent successfully")
+        return True
+    except Exception as e:
+        print(f"SMTP Exception: {e}")
+        return False
+
 @app.post("/forgot-password")
 def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = crud.get_user_by_email(db, email=request.email)
@@ -154,8 +187,12 @@ def forgot_password(request: schemas.ForgotPasswordRequest, db: Session = Depend
     user.reset_otp_expires_at = datetime.utcnow() + timedelta(minutes=15)
     db.commit()
     
-    # In Phase 1, we return the OTP for testing instead of emailing it.
-    return {"message": "OTP generated", "otp": otp}
+    success = send_otp_email(request.email, otp)
+    if not success:
+        # We still return 200, or maybe 500 depending on preference. Let's return 500 so the app knows it failed.
+        raise HTTPException(status_code=500, detail="Failed to send OTP email")
+    
+    return {"message": "OTP sent successfully"}
 
 @app.post("/verify-otp")
 def verify_otp(request: schemas.VerifyOTPRequest, db: Session = Depends(get_db)):

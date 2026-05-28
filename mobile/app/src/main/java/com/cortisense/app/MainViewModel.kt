@@ -500,7 +500,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             isLoading = true
             errorMessage = null
             try {
-                val req = RegisterRequest(firstName, lastName, age, gender, email, pass)
+                val req = RegisterRequest(firstName, lastName, age, gender, email.trim(), pass)
                 RetrofitClient.instance.register(req)
                 // DO NOT automatically log in or save JWT. Force user to sign in.
                 onSuccess()
@@ -517,7 +517,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             isLoading = true
             errorMessage = null
             try {
-                val req = LoginRequest(email, pass)
+                val req = LoginRequest(email.trim(), pass)
                 val res = RetrofitClient.instance.login(req)
                 preferenceManager.saveJwtToken(res.accessToken)
                 
@@ -539,7 +539,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             isLoading = true
             errorMessage = null
             try {
-                val res = RetrofitClient.instance.forgotPassword(ForgotPasswordRequest(email))
+                val res = RetrofitClient.instance.forgotPassword(ForgotPasswordRequest(email.trim()))
                 onSuccess(res.otp ?: "")
             } catch(e: Exception) {
                 errorMessage = "Failed: ${e.message}"
@@ -554,7 +554,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             isLoading = true
             errorMessage = null
             try {
-                RetrofitClient.instance.verifyOtp(VerifyOTPRequest(email, otp))
+                RetrofitClient.instance.verifyOtp(VerifyOTPRequest(email.trim(), otp.trim()))
                 onSuccess()
             } catch(e: Exception) {
                 errorMessage = "Failed: ${e.message}"
@@ -569,7 +569,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             isLoading = true
             errorMessage = null
             try {
-                RetrofitClient.instance.resetPassword(ResetPasswordRequest(email, otp, newPass))
+                RetrofitClient.instance.resetPassword(ResetPasswordRequest(email.trim(), otp.trim(), newPass))
                 onSuccess()
             } catch(e: Exception) {
                 errorMessage = "Failed: ${e.message}"

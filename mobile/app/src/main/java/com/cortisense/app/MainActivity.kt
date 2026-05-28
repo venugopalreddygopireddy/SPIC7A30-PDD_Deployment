@@ -269,10 +269,10 @@ class MainActivity : AppCompatActivity() {
                             ForgotPasswordScreen(
                                 onBackToLogin = { navController.popBackStack() },
                                 onPasswordReset = { email -> 
-                                    viewModel.forgotPasswordApi(email) { otp ->
+                                    viewModel.forgotPasswordApi(email) { _ ->
                                         android.widget.Toast.makeText(
                                             context, 
-                                            "OTP for testing: $otp", 
+                                            "OTP sent to your email!", 
                                             android.widget.Toast.LENGTH_LONG
                                         ).show()
                                         navController.navigate("verify_otp/$email")
