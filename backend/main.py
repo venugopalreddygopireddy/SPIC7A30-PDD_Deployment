@@ -7,10 +7,9 @@ import pandas as pd
 import joblib
 import os
 import random
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from typing import List
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 from passlib.context import CryptContext
 import jwt
 from datetime import datetime, timedelta
@@ -147,33 +146,30 @@ def login(user_credentials: schemas.UserLogin, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 def send_otp_email(to_email: str, otp: str):
-    sender_email = os.getenv("EMAIL_ADDRESS")
-    sender_password = os.getenv("EMAIL_PASSWORD")
+    sg_api_key = os.getenv("SENDGRID_API_KEY")
+    from_email = os.getenv("FROM_EMAIL")
     
-    if not sender_email or not sender_password:
-        print("SMTP WARNING: EMAIL_ADDRESS or EMAIL_PASSWORD env vars are not set.")
+    if not sg_api_key or not from_email:
+        print("SMTP WARNING: SENDGRID_API_KEY or FROM_EMAIL env vars are not set.")
         return False
         
     try:
-        msg = MIMEMultipart()
-        msg['From'] = sender_email
-        msg['To'] = to_email
-        msg['Subject'] = "CortiSense Password Reset OTP"
+        print("SendGrid initialized")
+        print("Sending OTP email via SendGrid...")
         
-        body = f"Your CortiSense password reset OTP is: {otp}\nIt expires in 15 minutes."
-        msg.attach(MIMEText(body, 'plain'))
+        message = Mail(
+            from_email=from_email,
+            to_emails=to_email,
+            subject='CortiSense Password Reset OTP',
+            plain_text_content=f"Your CortiSense password reset OTP is: {otp}\nIt expires in 15 minutes."
+        )
         
-        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
-        server.starttls()
-        server.login(sender_email, sender_password)
-        print("SMTP login successful")
-        print(f"Sending OTP to {to_email}...")
-        server.send_message(msg)
-        server.quit()
-        print("Email sent successfully")
+        sg = SendGridAPIClient(sg_api_key)
+        response = sg.send(message)
+        print("SendGrid email sent successfully")
         return True
     except Exception as e:
-        print(f"SMTP Exception: {e}")
+        print(f"SendGrid Exception: {e}")
         return False
 
 @app.post("/forgot-password")

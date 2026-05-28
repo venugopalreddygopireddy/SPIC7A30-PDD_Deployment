@@ -13,3 +13,4 @@ passlib[bcrypt]
 bcrypt==4.0.1
 pyjwt
 python-multipart
+sendgrid
