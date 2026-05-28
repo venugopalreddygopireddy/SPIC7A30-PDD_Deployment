@@ -265,6 +265,7 @@ class MainActivity : AppCompatActivity() {
                             )
                         }
                         composable("forgot_password") {
+                            val context = LocalContext.current
                             ForgotPasswordScreen(
                                 onBackToLogin = { navController.popBackStack() },
                                 onPasswordReset = { email -> 
