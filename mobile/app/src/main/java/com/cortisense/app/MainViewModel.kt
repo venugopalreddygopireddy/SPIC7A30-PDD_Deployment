@@ -237,17 +237,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             launch { preferenceManager.isProfileCreated.collect { _isProfileCreated.value = it } }
             launch { preferenceManager.isLoggedIn.collect { _isLoggedIn.value = it } }
             launch { preferenceManager.jwtToken.collect { _jwtToken.value = it } }
-            val token = preferenceManager.jwtToken.firstOrNull()
-            if (!token.isNullOrEmpty()) {
-                _isLoggedIn.value = true
-                currentUserEmail = email
-                _userEmail.value = email
-                loadUserData(email)
-                loadNotifications(email)
-                fetchAnalytics()
-            } else {
-                logout()
-            }
+            launch { preferenceManager.userEmail.collect { 
+                _userEmail.value = it
+                currentUserEmail = it
+                if (it.isNotEmpty()) {
+                    loadUserData(it)
+                    loadNotifications(it)
+                    val token = preferenceManager.jwtToken.firstOrNull()
+                    if (!token.isNullOrEmpty()) {
+                        fetchAnalytics()
+                    }
+                }
+            } }
             launch { preferenceManager.userName.collect { 
                 _userName.value = it
                 currentUserName = it

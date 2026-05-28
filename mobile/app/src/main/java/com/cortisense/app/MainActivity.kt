@@ -3716,8 +3716,8 @@ fun WeeklyReportScreen(viewModel: MainViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val highestScore = weekly?.calendarActivity?.values?.maxOrNull() ?: 0
-        val lowestScoreWeekly = weekly?.calendarActivity?.values?.minOrNull() ?: 0
+        val highestScore = weekly?.highestScore ?: 0
+        val lowestScoreWeekly = weekly?.lowestScore ?: 0
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.CheckCircle, iconTint = tealColor, title = "Check-ins", value = "$checkIns")
             InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.TrendingUp, iconTint = Color(0xFFFF4B4B), title = "Highest Score", value = "$highestScore")
@@ -5777,7 +5777,8 @@ fun StreakTrackerScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             
-            StreakCalendar(history = history)
+            val monthlyData by viewModel.monthlyAnalytics.collectAsState()
+            StreakCalendar(activity = monthlyData?.calendarActivity)
             
             Spacer(modifier = Modifier.height(40.dp))
             
@@ -5800,14 +5801,13 @@ fun StreakTrackerScreen(viewModel: MainViewModel, onBack: () -> Unit) {
 }
 
 @Composable
-fun StreakCalendar(history: List<StressRecord>) {
+fun StreakCalendar(activity: Map<String, Int>?) {
     val today = Calendar.getInstance()
     val currentDay = today.get(Calendar.DAY_OF_MONTH)
     val currentMonth = today.get(Calendar.MONTH)
     val currentYear = today.get(Calendar.YEAR)
 
-    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-    val checkinDates = history.map { sdf.format(Date(it.timestamp)) }.toSet()
+    val checkinDates = activity?.keys ?: emptySet()
 
     val calForMonth = Calendar.getInstance().apply { set(Calendar.DAY_OF_MONTH, 1) }
     val daysInMonth = calForMonth.getActualMaximum(Calendar.DAY_OF_MONTH)
