@@ -196,7 +196,7 @@ class MainActivity : AppCompatActivity() {
 
                 NavHost(
                     navController = navController, 
-                    startDestination = if (viewModel.isProfileCreated.value) "dashboard" else "splash"
+                    startDestination = "splash"
                 ) {
                         composable("splash") {
                             SplashScreen(onTimeout = { 
@@ -219,8 +219,6 @@ class MainActivity : AppCompatActivity() {
                         }
                         composable("login") {
                             LoginScreen(
-                                registeredEmail = registeredEmail,
-                                registeredPassword = registeredPassword,
                                 onLogin = { email, password -> 
                                     viewModel.login(email, password) {
                                         val destination = if (isProfileCreated) "dashboard" else "profile_setup"
@@ -236,12 +234,26 @@ class MainActivity : AppCompatActivity() {
                         }
                         composable("signup") {
                             SignupScreen(
+                                backendError = viewModel.errorMessage,
+                                isLoading = viewModel.isLoading,
                                 onCreateAccount = { name, email, password ->
-                                    viewModel.saveRegistration(name, email, password)
-                                    viewModel.setLoggedIn(true)
-                                    navController.navigate("profile_setup") {
-                                        popUpTo("signup") { inclusive = true }
-                                    }
+                                    val parts = name.trim().split(" ", limit = 2)
+                                    val firstName = parts.getOrNull(0) ?: name
+                                    val lastName = parts.getOrNull(1) ?: ""
+                                    
+                                    viewModel.registerWithApi(
+                                        firstName = firstName.ifEmpty { "User" },
+                                        lastName = lastName,
+                                        age = 25,
+                                        gender = "Not specified",
+                                        email = email,
+                                        pass = password,
+                                        onSuccess = {
+                                            navController.navigate("profile_setup") {
+                                                popUpTo("signup") { inclusive = true }
+                                            }
+                                        }
+                                    )
                                 },
                                 onSignInClick = { navController.navigate("login") }
                             )
@@ -1071,8 +1083,6 @@ fun CustomTextField(
 
 @Composable
 fun LoginScreen(
-    registeredEmail: String,
-    registeredPassword: String,
     onLogin: (String, String) -> Unit,
     onSignUpClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
@@ -1104,25 +1114,26 @@ fun LoginScreen(
         }
     }
 
+    LaunchedEffect(viewModel.errorMessage) {
+        if (viewModel.errorMessage != null) {
+            errorMessage = viewModel.errorMessage
+            viewModel.errorMessage = null
+        }
+    }
+
     LaunchedEffect(Unit) {
-        if (registeredEmail.isNotEmpty() && registeredPassword.isNotEmpty()) {
-            email = registeredEmail
-            password = registeredPassword
-            onLogin(email, password)
-        } else {
-            try {
-                val getPasswordOption = GetPasswordOption()
-                val request = GetCredentialRequest(listOf(getPasswordOption))
-                val result = credentialManager.getCredential(context as Activity, request)
-                val credential = result.credential
-                if (credential is PasswordCredential) {
-                    email = credential.id
-                    password = credential.password
-                    onLogin(email, password)
-                }
-            } catch (e: Exception) {
-                // Ignored - user might not have saved passwords
+        try {
+            val getPasswordOption = GetPasswordOption()
+            val request = GetCredentialRequest(listOf(getPasswordOption))
+            val result = credentialManager.getCredential(context as Activity, request)
+            val credential = result.credential
+            if (credential is PasswordCredential) {
+                email = credential.id
+                password = credential.password
+                onLogin(email, password)
             }
+        } catch (e: Exception) {
+            // Ignored - user might not have saved passwords
         }
     }
 
@@ -1229,7 +1240,7 @@ fun LoginScreen(
 
             Button(
                 onClick = {
-                    if ((email == registeredEmail && password == registeredPassword) || (email.isNotEmpty() && password.isNotEmpty())) {
+                    if (email.isNotEmpty() && password.isNotEmpty()) {
                         coroutineScope.launch {
                             try {
                                 val request = CreatePasswordRequest(email, password)
@@ -1245,9 +1256,14 @@ fun LoginScreen(
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = tealColor),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                enabled = !viewModel.isLoading
             ) {
-                Text(stringResource(R.string.sign_in), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                if (viewModel.isLoading) {
+                    androidx.compose.material3.CircularProgressIndicator(color = MaterialTheme.colorScheme.surface, modifier = Modifier.size(24.dp))
+                } else {
+                    Text(stringResource(R.string.sign_in), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -1416,7 +1432,12 @@ fun ForgotPasswordPreview() {
 }
 
 @Composable
-fun SignupScreen(onCreateAccount: (String, String, String) -> Unit, onSignInClick: () -> Unit) {
+fun SignupScreen(
+    backendError: String? = null,
+    isLoading: Boolean = false,
+    onCreateAccount: (String, String, String) -> Unit, 
+    onSignInClick: () -> Unit
+) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
@@ -1424,6 +1445,12 @@ fun SignupScreen(onCreateAccount: (String, String, String) -> Unit, onSignInClic
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    LaunchedEffect(backendError) {
+        if (backendError != null) {
+            errorMessage = backendError
+        }
+    }
 
     val tealColor = MaterialTheme.colorScheme.primary
     val textColor = MaterialTheme.colorScheme.onBackground
@@ -1578,9 +1605,14 @@ fun SignupScreen(onCreateAccount: (String, String, String) -> Unit, onSignInClic
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurface),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                enabled = !isLoading
             ) {
-                Text(stringResource(R.string.create_account), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                if (isLoading) {
+                    androidx.compose.material3.CircularProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                } else {
+                    Text(stringResource(R.string.create_account), fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
             Spacer(modifier = Modifier.weight(1f))

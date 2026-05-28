@@ -1,6 +1,39 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
+
+# =========================================================
+# AUTHENTICATION SCHEMAS
+# =========================================================
+
+class UserCreate(BaseModel):
+    first_name: str
+    last_name: str
+    age: int
+    gender: str
+    email: str
+    password: str
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class UserResponse(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    email: str
+    age: int
+    gender: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 
 
 # =========================================================

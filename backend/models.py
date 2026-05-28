@@ -1,15 +1,32 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    first_name = Column(String)
+    last_name = Column(String)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    age = Column(Integer)
+    gender = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    checkins = relationship("StressCheckIn", back_populates="user")
 
 class StressCheckIn(Base):
 
     __tablename__ = "stress_checkins"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
 
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="checkins")
 
     # ====================================
     # AI RESULTS

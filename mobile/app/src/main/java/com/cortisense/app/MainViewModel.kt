@@ -63,6 +63,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn = _isLoggedIn.asStateFlow()
 
+    private val _jwtToken = MutableStateFlow("")
+    val jwtToken = _jwtToken.asStateFlow()
+
     private val _userEmail = MutableStateFlow("")
     val userEmail = _userEmail.asStateFlow()
 
@@ -213,6 +216,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val notifAchievements = _notifAchievements.asStateFlow()
 
     init {
+        RetrofitClient.preferenceManager = preferenceManager
         viewModelScope.launch {
             launch { preferenceManager.isDarkTheme.collect { _isDarkTheme.value = it } }
             launch { preferenceManager.themeMode.collect { _themeMode.value = it } }
@@ -220,6 +224,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             launch { preferenceManager.isUserRegistered.collect { _isUserRegistered.value = it } }
             launch { preferenceManager.isProfileCreated.collect { _isProfileCreated.value = it } }
             launch { preferenceManager.isLoggedIn.collect { _isLoggedIn.value = it } }
+            launch { preferenceManager.jwtToken.collect { _jwtToken.value = it } }
             launch { preferenceManager.userEmail.collect { 
                 _userEmail.value = it
                 currentUserEmail = it
@@ -266,6 +271,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         if (tasksStr.isEmpty()) emptySet() else tasksStr.split(",").toSet()
                     }
                 }.collect { _completedTasks.value = it }
+            }
+            
+            // Auto-clear dummy state if we have no JWT token
+            val currentToken = preferenceManager.jwtToken.firstOrNull() ?: ""
+            val currentlyLoggedIn = preferenceManager.isLoggedIn.firstOrNull() ?: false
+            if (currentlyLoggedIn && currentToken.isEmpty()) {
+                logout()
             }
         }
     }
@@ -475,6 +487,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun saveRegistration(name: String, email: String, pass: String) {
+        // Kept for local compatibility
         viewModelScope.launch {
             preferenceManager.saveRegistration(name, email, pass)
             currentUserEmail = email
@@ -482,11 +495,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun login(email: String, pass: String, onSuccess: () -> Unit) {
+    fun registerWithApi(firstName: String, lastName: String, age: Int, gender: String, email: String, pass: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
-            if (_userEmail.value == email && _userPassword.value == pass) {
+            isLoading = true
+            errorMessage = null
+            try {
+                val req = RegisterRequest(firstName, lastName, age, gender, email, pass)
+                val res = RetrofitClient.instance.register(req)
+                preferenceManager.saveJwtToken(res.accessToken)
+                
+                preferenceManager.saveRegistration("$firstName $lastName", email, pass)
+                currentUserEmail = email
+                currentUserName = "$firstName $lastName"
                 preferenceManager.setLoggedIn(true)
                 onSuccess()
+            } catch(e: Exception) {
+                errorMessage = "Registration Failed: ${e.message}"
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+
+    fun login(email: String, pass: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            isLoading = true
+            errorMessage = null
+            try {
+                val req = LoginRequest(email, pass)
+                val res = RetrofitClient.instance.login(req)
+                preferenceManager.saveJwtToken(res.accessToken)
+                
+                preferenceManager.setLoggedIn(true)
+                currentUserEmail = email
+                _userEmail.value = email
+                
+                onSuccess()
+            } catch(e: Exception) {
+                errorMessage = "Login Failed: ${e.message}"
+            } finally {
+                isLoading = false
             }
         }
     }
@@ -514,7 +562,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         viewModelScope.launch {
+            preferenceManager.saveJwtToken("")
             preferenceManager.setLoggedIn(false)
+            preferenceManager.saveRegistration("", "", "")
+            currentUserEmail = ""
+            currentUserName = ""
+            _userEmail.value = ""
+            _userName.value = ""
+            _jwtToken.value = ""
         }
     }
 

@@ -30,6 +30,8 @@ class PreferenceManager(private val context: Context) {
         val IS_PROFILE_CREATED_KEY = booleanPreferencesKey("isProfileCreated")
         val IS_LOGGED_IN_KEY = booleanPreferencesKey("isLoggedIn")
         
+        val JWT_TOKEN_KEY = stringPreferencesKey("jwt_token")
+        
         // Notification Settings
         val NOTIF_CHECKIN_KEY = booleanPreferencesKey("notif_checkin")
         val NOTIF_STRESS_ALERTS_KEY = booleanPreferencesKey("notif_stress_alerts")
@@ -73,6 +75,7 @@ class PreferenceManager(private val context: Context) {
     val isUserRegistered: Flow<Boolean> = context.dataStore.data.map { it[IS_USER_REGISTERED_KEY] ?: false }
     val isProfileCreated: Flow<Boolean> = context.dataStore.data.map { it[IS_PROFILE_CREATED_KEY] ?: false }
     val isLoggedIn: Flow<Boolean> = context.dataStore.data.map { it[IS_LOGGED_IN_KEY] ?: false }
+    val jwtToken: Flow<String> = context.dataStore.data.map { it[JWT_TOKEN_KEY] ?: "" }
 
     val notifCheckin: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_CHECKIN_KEY] ?: true }
     val notifStressAlerts: Flow<Boolean> = context.dataStore.data.map { it[NOTIF_STRESS_ALERTS_KEY] ?: true }
@@ -145,6 +148,12 @@ class PreferenceManager(private val context: Context) {
     suspend fun setLoggedIn(isLoggedIn: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[IS_LOGGED_IN_KEY] = isLoggedIn
+        }
+    }
+
+    suspend fun saveJwtToken(token: String) {
+        context.dataStore.edit { preferences ->
+            preferences[JWT_TOKEN_KEY] = token
         }
     }
 

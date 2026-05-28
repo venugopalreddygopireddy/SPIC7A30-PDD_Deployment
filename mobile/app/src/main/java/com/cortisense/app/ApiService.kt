@@ -2,11 +2,39 @@ package com.cortisense.app
 
 import com.google.gson.annotations.SerializedName
 import okhttp3.OkHttpClient
+import okhttp3.Interceptor
+import okhttp3.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.POST
+import retrofit2.http.GET
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+
+// ===============================
+// AUTH MODELS
+// ===============================
+
+data class RegisterRequest(
+    @SerializedName("first_name") val firstName: String,
+    @SerializedName("last_name") val lastName: String,
+    @SerializedName("age") val age: Int,
+    @SerializedName("gender") val gender: String,
+    @SerializedName("email") val email: String,
+    @SerializedName("password") val password: String
+)
+
+data class LoginRequest(
+    @SerializedName("email") val email: String,
+    @SerializedName("password") val password: String
+)
+
+data class TokenResponse(
+    @SerializedName("access_token") val accessToken: String,
+    @SerializedName("token_type") val tokenType: String
+)
 
 // ===============================
 // REQUEST MODEL
@@ -120,10 +148,19 @@ data class StressResponse(
 
 interface ApiService {
 
+    @POST("/register")
+    suspend fun register(@Body request: RegisterRequest): TokenResponse
+
+    @POST("/login")
+    suspend fun login(@Body request: LoginRequest): TokenResponse
+
     @POST("/checkin")
     suspend fun sendCheckIn(
         @Body request: CheckInRequest
     ): StressResponse
+
+    @GET("/history")
+    suspend fun getHistory(): List<StressResponse> // We map StressResponse partially for history. Wait, history schema returns StressCheckInResponse.
 }
 
 
@@ -135,30 +172,43 @@ object RetrofitClient {
 
     private const val BASE_URL = "https://cortisense-backend.onrender.com/"
 
+    var preferenceManager: PreferenceManager? = null
+
+    private val authInterceptor = Interceptor { chain ->
+        val original = chain.request()
+        
+        // Skip auth for register and login
+        if (original.url.encodedPath.contains("/login") || original.url.encodedPath.contains("/register")) {
+            return@Interceptor chain.proceed(original)
+        }
+        
+        var token: String? = null
+        preferenceManager?.let { pm ->
+            token = runBlocking { pm.jwtToken.first() }
+        }
+
+        val requestBuilder = original.newBuilder()
+        if (!token.isNullOrEmpty()) {
+            requestBuilder.header("Authorization", "Bearer $token")
+        }
+        
+        chain.proceed(requestBuilder.build())
+    }
+
     private val client = OkHttpClient.Builder()
-
         .connectTimeout(120, TimeUnit.SECONDS)
-
         .readTimeout(120, TimeUnit.SECONDS)
-
         .writeTimeout(120, TimeUnit.SECONDS)
-
+        .addInterceptor(authInterceptor)
         .retryOnConnectionFailure(true)
-
         .build()
 
     val instance: ApiService by lazy {
-
         val retrofit = Retrofit.Builder()
-
             .baseUrl(BASE_URL)
-
             .client(client)
-
             .addConverterFactory(GsonConverterFactory.create())
-
             .build()
-
         retrofit.create(ApiService::class.java)
     }
 }

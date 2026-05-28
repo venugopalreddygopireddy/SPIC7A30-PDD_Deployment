@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import onnxruntime as ort
@@ -7,6 +7,10 @@ import pandas as pd
 import joblib
 import os
 from typing import List
+from passlib.context import CryptContext
+import jwt
+from datetime import datetime, timedelta
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 # Database Imports
 import models
@@ -79,6 +83,78 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_event():
+    print("--- REGISTERED ROUTES ---")
+    for route in app.routes:
+        print(f"Path: {getattr(route, 'path', 'N/A')}, Name: {getattr(route, 'name', 'N/A')}, Methods: {getattr(route, 'methods', 'N/A')}")
+    print("-------------------------")
+
+# ============================================
+# AUTHENTICATION LOGIC
+# ============================================
+
+SECRET_KEY = os.getenv("JWT_SECRET", "cortisense_super_secret_production_key_123!")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
+
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security), db: Session = Depends(get_db)):
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    
+    user = crud.get_user_by_email(db, email=email)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    return user
+
+
+# ============================================
+# AUTHENTICATION ROUTES
+# ============================================
+
+@app.post("/register", response_model=schemas.Token)
+def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = crud.get_user_by_email(db, email=user.email)
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    hashed_password = get_password_hash(user.password)
+    new_user = crud.create_user(db=db, user=user, hashed_password=hashed_password)
+    
+    access_token = create_access_token(data={"sub": new_user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.post("/login", response_model=schemas.Token)
+def login(user_credentials: schemas.UserLogin, db: Session = Depends(get_db)):
+    user = crud.get_user_by_email(db, email=user_credentials.email)
+    if not user or not verify_password(user_credentials.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    access_token = create_access_token(data={"sub": user.email})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
 # ============================================
 # LOAD AI MODEL (ONNX)
 # ============================================
@@ -118,11 +194,13 @@ def home():
 # ============================================
 
 @app.post("/checkin", response_model=schemas.AIAnalysisResult)
-def analyze_stress(
+def receive_checkin(
     data: schemas.CheckInRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
 
+    print(f"Received check-in data from user {current_user.email}:", data)
     # ========================================
     # PREPARE INPUT DATA
     # ========================================
@@ -306,7 +384,8 @@ def analyze_stress(
         crud.create_stress_checkin(
             db,
             data,
-            analysis_result
+            analysis_result,
+            user_id=current_user.id
         )
         
         from sqlalchemy import text
@@ -332,19 +411,21 @@ def analyze_stress(
     "/history",
     response_model=List[schemas.StressCheckInResponse]
 )
-def read_history(
+def get_history(
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
 ):
 
-    history = crud.get_checkins(
+    checkins = crud.get_checkins(
         db,
+        user_id=current_user.id,
         skip=skip,
         limit=limit
     )
 
-    return history
+    return checkins
 
 
 # ============================================
