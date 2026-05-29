@@ -1038,20 +1038,14 @@ fun SplashScreen(onTimeout: () -> Unit) {
                 verticalArrangement = Arrangement.Center
             ) {
                 // Logo (User Picture or fallback)
-                Box(
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "App Logo",
                     modifier = Modifier
                         .size(100.dp)
-                        .background(tealColor, RoundedCornerShape(28.dp))
-                        .clip(RoundedCornerShape(28.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.app_logo),
-                        contentDescription = "App Logo",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
-                }
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -1193,20 +1187,14 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(32.dp))
-            Box(
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = "App Logo",
                 modifier = Modifier
                     .size(80.dp)
-                    .background(tealColor, RoundedCornerShape(20.dp))
-                    .clip(RoundedCornerShape(20.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.app_logo),
-                    contentDescription = "App Logo",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
-            }
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -2288,20 +2276,14 @@ fun HomeScreen(
                 // Logo, Greeting, Name (Top Left)
                 // Logo, Greeting, Name (Top Left)
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                    Box(
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "App Logo",
                         modifier = Modifier
                             .size(64.dp)
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
-                            .clip(RoundedCornerShape(16.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.app_logo),
-                            contentDescription = "App Logo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
@@ -5051,21 +5033,16 @@ fun ProfileMainScreenContent(
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
                         .aspectRatio(1f),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = CircleShape,
                     color = MaterialTheme.colorScheme.primary,
                     tonalElevation = 8.dp
                 ) {
-                    Box(
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "App Logo",
                         modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.app_logo),
-                            contentDescription = "App Logo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
+                        contentScale = ContentScale.Crop
+                    )
                 }
             }
         }
@@ -5090,21 +5067,15 @@ fun ProfileMainScreenContent(
 
         // Profile Header
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
+            Image(
+                painter = painterResource(id = R.drawable.app_logo),
+                contentDescription = "App Logo",
                 modifier = Modifier
                     .size(80.dp)
-                    .background(tealColor, RoundedCornerShape(20.dp))
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(CircleShape)
                     .clickable { showImagePreview = true },
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.app_logo),
-                    contentDescription = "App Logo",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit
-                )
-            }
+                contentScale = ContentScale.Crop
+            )
             Spacer(modifier = Modifier.width(20.dp))
             Column {
                 Text(text = viewModel.currentUserName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
@@ -5350,17 +5321,14 @@ fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
 
             Spacer(modifier = Modifier.height(32.dp))
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier.size(100.dp).background(tealColor, RoundedCornerShape(24.dp)).clip(RoundedCornerShape(24.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.app_logo),
-                        contentDescription = "App Logo",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Fit
-                    )
-                }
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier
+                        .size(100.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
