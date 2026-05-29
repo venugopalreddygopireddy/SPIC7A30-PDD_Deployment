@@ -2195,6 +2195,7 @@ fun HomeScreen(
     val primaryColor = MaterialTheme.colorScheme.primary
     val todayCheckins by viewModel.todayCheckinsCount.collectAsState()
     val todaySleep by viewModel.todaySleepDuration.collectAsState()
+    val currentUserName by viewModel.userName.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.fetchDashboardSummary()
@@ -2237,7 +2238,7 @@ fun HomeScreen(
                             color = subtitleColor
                         )
                         Text(
-                            text = viewModel.currentUserName,
+                            text = currentUserName,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = textColor,
@@ -4955,6 +4956,7 @@ fun ProfileMainScreenContent(
     val imageUri by viewModel.profileImageUri.collectAsState()
     val currentStreak by viewModel.currentStreak.collectAsState()
     val currentUserName by viewModel.userName.collectAsState()
+    val currentUserEmail by viewModel.userEmail.collectAsState()
     
     val themeMode by viewModel.themeMode.collectAsState()
     val isSystemDark = isSystemInDarkTheme()
@@ -5023,8 +5025,8 @@ fun ProfileMainScreenContent(
             )
             Spacer(modifier = Modifier.width(20.dp))
             Column {
-                Text(text = viewModel.currentUserName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
-                Text(text = viewModel.currentUserEmail, fontSize = 12.sp, color = subtitleColor)
+                Text(text = currentUserName, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = textColor)
+                Text(text = currentUserEmail, fontSize = 12.sp, color = subtitleColor)
             }
         }
 
