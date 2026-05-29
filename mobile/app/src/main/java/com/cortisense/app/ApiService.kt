@@ -53,6 +53,9 @@ data class CheckInRequest(
     @SerializedName("gender")
     val gender: String,
 
+    @SerializedName("mobile_number")
+    val mobileNumber: String = "",
+
     @SerializedName("occupation")
     val occupation: String,
 

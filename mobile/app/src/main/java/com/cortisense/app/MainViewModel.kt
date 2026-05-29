@@ -704,6 +704,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val request = CheckInRequest(
                     age = checkInAge.toIntOrNull() ?: 25,
                     gender = checkInGender,
+                    mobileNumber = userMobile.value,
                     occupation = checkInOccupation,
                     maritalStatus = checkInMaritalStatus,
                     sleepDuration = checkInSleepDuration,
