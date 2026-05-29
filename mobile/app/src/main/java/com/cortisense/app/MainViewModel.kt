@@ -217,7 +217,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var checkInSocialInteractions by mutableStateOf(3)
     var checkInWorkload by mutableStateOf("Moderate")
     var checkInMeditationPractice by mutableStateOf(0)
-    var checkInExerciseType by mutableStateOf("None")
+    var checkInExerciseTypes = androidx.compose.runtime.mutableStateListOf<String>()
     var checkInBloodPressure by mutableStateOf("120/80")
     var checkInBloodSugarLevel by mutableStateOf(90)
     var checkInMood by mutableStateOf("Neutral")
@@ -684,7 +684,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 checkInSocialInteractions = latest.socialInteractions
                 checkInWorkload = latest.workload
                 checkInMeditationPractice = latest.meditationPractice
-                checkInExerciseType = latest.exerciseType
+                checkInExerciseTypes.clear()
+                latest.exerciseType.split(", ").filter { it.isNotBlank() }.forEach { checkInExerciseTypes.add(it) }
                 checkInBloodPressure = latest.bloodPressure
                 checkInBloodSugarLevel = latest.bloodSugarLevel
             } else {
@@ -718,7 +719,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     travelTime = checkInTravelTime.toInt(),
                     socialInteractions = checkInSocialInteractions,
                     meditationPractice = checkInMeditationPractice.toString(),
-                    exerciseType = checkInExerciseType,
+                    exerciseType = if (checkInExerciseTypes.isEmpty()) "None" else checkInExerciseTypes.joinToString(", "),
                     bloodPressure = 120,
                     bloodSugarLevel = checkInBloodSugarLevel,
                     mood = checkInMood,
@@ -781,7 +782,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     travelTime = checkInTravelTime,
                     socialInteractions = checkInSocialInteractions,
                     meditationPractice = checkInMeditationPractice,
-                    exerciseType = checkInExerciseType,
+                    exerciseType = if (checkInExerciseTypes.isEmpty()) "None" else checkInExerciseTypes.joinToString(", "),
                     bloodPressure = checkInBloodPressure,
                     bloodSugarLevel = checkInBloodSugarLevel,
                     mood = checkInMood,
@@ -1133,4 +1134,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun buyPremium(onComplete: (String) -> Unit) {}
     fun backupChatHistory(onComplete: (String) -> Unit) {}
     fun restoreChatHistory(uri: Uri, onComplete: (String) -> Unit) {}
+
+    fun calculateSleepMetrics() {
+        try {
+            val format = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+            val bedDate = format.parse(checkInBedTime)
+            val wakeDate = format.parse(checkInWakeUpTime)
+            if (bedDate != null && wakeDate != null) {
+                var diff = wakeDate.time - bedDate.time
+                if (diff < 0) {
+                    diff += 24 * 60 * 60 * 1000 // Add 24 hours if crossed midnight
+                }
+                val hours = diff / (1000 * 60 * 60.0f)
+                checkInSleepDuration = hours
+                
+                checkInSleepQuality = when {
+                    hours >= 8.0f -> 5
+                    hours >= 7.0f -> 4
+                    hours >= 6.0f -> 3
+                    hours >= 5.0f -> 2
+                    else -> 1
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore parse errors
+        }
+    }
 }

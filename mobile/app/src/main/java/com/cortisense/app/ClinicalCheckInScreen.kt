@@ -152,26 +152,53 @@ fun ClinicalCheckInScreen(
 
 @Composable
 fun PagePersonal(vm: MainViewModel) {
+    val age by vm.userAge.collectAsState()
+    val gender by vm.userGender.collectAsState()
+    val mobile by vm.userMobile.collectAsState()
+
+    LaunchedEffect(age, gender) {
+        vm.checkInAge = age
+        vm.checkInGender = gender
+    }
+
     SectionContainer(title = "Personal Information", icon = "👤") {
-        OutlinedTextField(
-            value = vm.checkInAge,
-            onValueChange = { vm.checkInAge = it },
-            label = { Text("Age") },
-            modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number)
+        Text(
+            text = "Note: If you want to change Age, Gender, or Mobile Number, please edit them in Edit Profile.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
         )
         Spacer(Modifier.height(16.dp))
-        Text("Gender", style = MaterialTheme.typography.labelLarge)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Male", "Female", "Other").forEach {
-                FilterChip(
-                    selected = vm.checkInGender == it,
-                    onClick = { vm.checkInGender = it },
-                    label = { Text(it) }
-                )
-            }
-        }
+
+        OutlinedTextField(
+            value = age,
+            onValueChange = { },
+            label = { Text("Age") },
+            modifier = Modifier.fillMaxWidth(),
+            readOnly = true,
+            enabled = false
+        )
         Spacer(Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = gender,
+            onValueChange = { },
+            label = { Text("Gender") },
+            modifier = Modifier.fillMaxWidth(),
+            readOnly = true,
+            enabled = false
+        )
+        Spacer(Modifier.height(16.dp))
+        
+        OutlinedTextField(
+            value = mobile,
+            onValueChange = { },
+            label = { Text("Mobile Number") },
+            modifier = Modifier.fillMaxWidth(),
+            readOnly = true,
+            enabled = false
+        )
+        Spacer(Modifier.height(16.dp))
+
         OutlinedTextField(
             value = vm.checkInOccupation,
             onValueChange = { vm.checkInOccupation = it },
@@ -195,41 +222,41 @@ fun PagePersonal(vm: MainViewModel) {
 @Composable
 fun PageSleep(vm: MainViewModel) {
     SectionContainer(title = "Sleep Information", icon = "🌙") {
-        Text("Sleep Duration: ${vm.checkInSleepDuration} hours", style = MaterialTheme.typography.labelLarge)
-        Slider(
-            value = vm.checkInSleepDuration,
-            onValueChange = { vm.checkInSleepDuration = it },
-            valueRange = 0f..12f,
-            steps = 24,
-            colors = SliderDefaults.colors(thumbColor = SageGreen, activeTrackColor = SageGreen)
-        )
-        Spacer(Modifier.height(16.dp))
-        Text("Sleep Quality (1-5)", style = MaterialTheme.typography.labelLarge)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            (1..5).forEach {
-                IconButton(onClick = { vm.checkInSleepQuality = it }) {
-                    Icon(
-                        if (vm.checkInSleepQuality >= it) Icons.Default.Check else Icons.Default.Check, // Placeholder for Star icon
-                        contentDescription = null,
-                        tint = if (vm.checkInSleepQuality >= it) SageGreen else Color.Gray
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = vm.checkInWakeUpTime,
-            onValueChange = { vm.checkInWakeUpTime = it },
+            onValueChange = { 
+                vm.checkInWakeUpTime = it
+                vm.calculateSleepMetrics()
+            },
             label = { Text("Wake Up Time (HH:MM)") },
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(
             value = vm.checkInBedTime,
-            onValueChange = { vm.checkInBedTime = it },
+            onValueChange = { 
+                vm.checkInBedTime = it
+                vm.calculateSleepMetrics()
+            },
             label = { Text("Bed Time (HH:MM)") },
             modifier = Modifier.fillMaxWidth()
         )
+        Spacer(Modifier.height(24.dp))
+        Text(
+            "Calculated Sleep Duration: ${String.format(java.util.Locale.US, "%.1f", vm.checkInSleepDuration)} hours", 
+            style = MaterialTheme.typography.labelLarge
+        )
+        Spacer(Modifier.height(16.dp))
+        Text("Calculated Sleep Quality (1-5): ${vm.checkInSleepQuality}", style = MaterialTheme.typography.labelLarge)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            (1..5).forEach {
+                Icon(
+                    Icons.Default.Check, // Placeholder for Star icon
+                    contentDescription = null,
+                    tint = if (vm.checkInSleepQuality >= it) SageGreen else Color.Gray
+                )
+            }
+        }
     }
 }
 
@@ -240,7 +267,7 @@ fun PageLifestyle(vm: MainViewModel) {
         Slider(value = vm.checkInPhysicalActivity.toFloat(), onValueChange = { vm.checkInPhysicalActivity = it.toInt() }, valueRange = 1f..5f, steps = 3)
         
         Spacer(Modifier.height(16.dp))
-        Text("Screen Time (Hours)", style = MaterialTheme.typography.labelLarge)
+        Text("Screen Time: ${vm.checkInScreenTime.toInt()}h ${((vm.checkInScreenTime % 1) * 60).toInt()}m", style = MaterialTheme.typography.labelLarge)
         Slider(value = vm.checkInScreenTime, onValueChange = { vm.checkInScreenTime = it }, valueRange = 0f..16f)
 
         Spacer(Modifier.height(16.dp))
@@ -268,22 +295,43 @@ fun PageLifestyle(vm: MainViewModel) {
 @Composable
 fun PageWork(vm: MainViewModel) {
     SectionContainer(title = "Work & Daily Routine", icon = "💼") {
-        Text("Work Hours (Per Day)", style = MaterialTheme.typography.labelLarge)
+        Text("Work Hours (Per Day): ${vm.checkInWorkHours.toInt()}h ${((vm.checkInWorkHours % 1) * 60).toInt()}m", style = MaterialTheme.typography.labelLarge)
         Slider(value = vm.checkInWorkHours, onValueChange = { vm.checkInWorkHours = it }, valueRange = 0f..16f)
 
         Spacer(Modifier.height(16.dp))
-        Text("Travel Time (Hours)", style = MaterialTheme.typography.labelLarge)
+        Text("Travel Time: ${vm.checkInTravelTime.toInt()}h ${((vm.checkInTravelTime % 1) * 60).toInt()}m", style = MaterialTheme.typography.labelLarge)
         Slider(value = vm.checkInTravelTime, onValueChange = { vm.checkInTravelTime = it }, valueRange = 0f..5f)
 
         Spacer(Modifier.height(16.dp))
-        Text("Social Interactions (1-5)", style = MaterialTheme.typography.labelLarge)
+        val dots = "●".repeat(vm.checkInSocialInteractions) + "○".repeat(5 - vm.checkInSocialInteractions)
+        Text("Social Interactions: $dots", style = MaterialTheme.typography.labelLarge)
         Slider(value = vm.checkInSocialInteractions.toFloat(), onValueChange = { vm.checkInSocialInteractions = it.toInt() }, valueRange = 1f..5f)
 
         Spacer(Modifier.height(16.dp))
         Text("Workload Level", style = MaterialTheme.typography.labelLarge)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Light", "Normal", "Moderate", "Heavy", "Extreme").forEach {
-                FilterChip(selected = vm.checkInWorkload == it, onClick = { vm.checkInWorkload = it }, label = { Text(it) })
+        val workloadOptions = listOf("Light", "Normal", "Moderate", "Heavy", "Extreme")
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (i in workloadOptions.indices step 2) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val option1 = workloadOptions[i]
+                    FilterChip(
+                        selected = vm.checkInWorkload == option1,
+                        onClick = { vm.checkInWorkload = option1 },
+                        label = { Text(option1) },
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (i + 1 < workloadOptions.size) {
+                        val option2 = workloadOptions[i + 1]
+                        FilterChip(
+                            selected = vm.checkInWorkload == option2,
+                            onClick = { vm.checkInWorkload = option2 },
+                            label = { Text(option2) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
             }
         }
     }
@@ -292,11 +340,24 @@ fun PageWork(vm: MainViewModel) {
 @Composable
 fun PageHealth(vm: MainViewModel) {
     SectionContainer(title = "Health & Wellness", icon = "🏥") {
-        Text("Meditation Practice (Minutes)", style = MaterialTheme.typography.labelLarge)
-        Slider(value = vm.checkInMeditationPractice.toFloat(), onValueChange = { vm.checkInMeditationPractice = it.toInt() }, valueRange = 0f..60f)
+        Text("Meditation Practice: ${vm.checkInMeditationPractice} mins", style = MaterialTheme.typography.labelLarge)
+        Slider(value = vm.checkInMeditationPractice.toFloat(), onValueChange = { vm.checkInMeditationPractice = it.toInt() }, valueRange = 0f..30f)
 
         Spacer(Modifier.height(16.dp))
-        OutlinedTextField(value = vm.checkInExerciseType, onValueChange = { vm.checkInExerciseType = it }, label = { Text("Exercise Type (e.g. Gym, Yoga)") }, modifier = Modifier.fillMaxWidth())
+        Text("Exercise Type (Select multiple)", style = MaterialTheme.typography.labelLarge)
+        val exercises = listOf("Gym", "Yoga", "Running", "Walking", "Cycling", "Swimming")
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            exercises.forEach { ex ->
+                FilterChip(
+                    selected = vm.checkInExerciseTypes.contains(ex),
+                    onClick = { 
+                        if (vm.checkInExerciseTypes.contains(ex)) vm.checkInExerciseTypes.remove(ex)
+                        else vm.checkInExerciseTypes.add(ex)
+                    },
+                    label = { Text(ex) }
+                )
+            }
+        }
 
         Spacer(Modifier.height(16.dp))
         OutlinedTextField(value = vm.checkInBloodPressure, onValueChange = { vm.checkInBloodPressure = it }, label = { Text("Blood Pressure (mmHg)") }, modifier = Modifier.fillMaxWidth())
