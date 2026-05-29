@@ -622,7 +622,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun saveProfileSetup(name: String, age: String, gender: String, goal: String) {
         viewModelScope.launch {
             preferenceManager.saveProfileSetup(age, gender, goal)
-            preferenceManager.updateProfile(name, age, gender, goal, _profileImageUri.value)
+            preferenceManager.updateProfile(
+                firstName = name,
+                lastName = "",
+                email = currentUserEmail,
+                dob = "",
+                age = age,
+                gender = gender,
+                goal = goal,
+                mobile = "",
+                imageUri = _profileImageUri.value
+            )
         }
     }
 
