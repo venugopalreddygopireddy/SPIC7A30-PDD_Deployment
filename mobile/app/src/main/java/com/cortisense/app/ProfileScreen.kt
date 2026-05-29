@@ -46,25 +46,37 @@ fun ProfileScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     // Observe DataStore fields from ViewModel
-    val initialName by viewModel.userName.collectAsState()
-    val userEmail by viewModel.userEmail.collectAsState()
-    val initialAge by viewModel.userAge.collectAsState()
-    val initialGender by viewModel.userGender.collectAsState()
-    val initialGoal by viewModel.userGoal.collectAsState()
-    val initialImageUri by viewModel.profileImageUri.collectAsState()
-    var imageUri by remember(initialImageUri) { mutableStateOf(initialImageUri) }
+    val initialFirstName by viewModel.userFirstName.collectAsState()
+    val initialLastName by viewModel.userLastName.collectAsState()
+    val initialDob by viewModel.userDob.collectAsState()
+    val initialMobile by viewModel.userMobile.collectAsState()
 
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri -> if (uri != null) imageUri = uri.toString() }
-    )
-
-
-    // Local mutable state for editing
-    var name by remember(initialName) { mutableStateOf(initialName) }
+    var firstName by remember(initialFirstName) { mutableStateOf(initialFirstName) }
+    var lastName by remember(initialLastName) { mutableStateOf(initialLastName) }
+    var dob by remember(initialDob) { mutableStateOf(initialDob) }
+    var mobile by remember(initialMobile) { mutableStateOf(initialMobile) }
     var age by remember(initialAge) { mutableStateOf(initialAge) }
     var gender by remember(initialGender) { mutableStateOf(initialGender) }
     var goal by remember(initialGoal) { mutableStateOf(initialGoal) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val calendar = java.util.Calendar.getInstance()
+    val datePickerDialog = android.app.DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            dob = String.format(java.util.Locale.getDefault(), "%02d/%02d/%04d", dayOfMonth, month + 1, year)
+            val today = java.util.Calendar.getInstance()
+            var calculatedAge = today.get(java.util.Calendar.YEAR) - year
+            if (today.get(java.util.Calendar.MONTH) < month || 
+                (today.get(java.util.Calendar.MONTH) == month && today.get(java.util.Calendar.DAY_OF_MONTH) < dayOfMonth)) {
+                calculatedAge--
+            }
+            age = calculatedAge.toString()
+        },
+        calendar.get(java.util.Calendar.YEAR),
+        calendar.get(java.util.Calendar.MONTH),
+        calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    )
 
     val updatedMessage = stringResource(id = R.string.profile_updated)
 
@@ -128,38 +140,57 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Name Field
+            // Name Fields
             CustomTextField(
-                label = stringResource(id = R.string.name_label),
-                value = name,
-                onValueChange = { name = it },
-                placeholder = stringResource(R.string.extracted_enter_your_name)
+                label = "First Name",
+                value = firstName,
+                onValueChange = { firstName = it },
+                placeholder = "Enter First Name"
             )
             
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Email Field (Read-only)
-            OutlinedTextField(
-                value = userEmail,
-                onValueChange = {},
-                label = { Text(stringResource(id = R.string.email_address)) },
-                readOnly = true,
-                modifier = Modifier.fillMaxWidth(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                    disabledBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                ),
-                enabled = false
+            CustomTextField(
+                label = "Last Name",
+                value = lastName,
+                onValueChange = { lastName = it },
+                placeholder = "Enter Last Name"
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Age Field
+            // Mobile Number
+            CustomTextField(
+                label = "Mobile Number",
+                value = mobile,
+                onValueChange = { mobile = it },
+                placeholder = "Enter Mobile Number"
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Date of Birth Field
+            Box(modifier = Modifier.fillMaxWidth().clickable { datePickerDialog.show() }) {
+                CustomTextField(
+                    label = "Date of Birth", 
+                    value = dob, 
+                    onValueChange = {}, 
+                    placeholder = "DD/MM/YYYY",
+                    readOnly = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Box(modifier = Modifier.matchParentSize().clickable { datePickerDialog.show() })
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Age Field (Read-only)
             CustomTextField(
                 label = stringResource(id = R.string.age),
                 value = age,
-                onValueChange = { age = it },
-                placeholder = stringResource(R.string.extracted_enter_your_age)
+                onValueChange = {},
+                placeholder = stringResource(R.string.extracted_enter_your_age),
+                readOnly = true
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -213,7 +244,7 @@ fun ProfileScreen(
             // Save Button
             Button(
                 onClick = {
-                    viewModel.updateProfile(name, age, gender, goal, imageUri)
+                    viewModel.updateProfile(firstName, lastName, userEmail, dob, age, gender, goal, mobile, imageUri)
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(updatedMessage)
                     }
