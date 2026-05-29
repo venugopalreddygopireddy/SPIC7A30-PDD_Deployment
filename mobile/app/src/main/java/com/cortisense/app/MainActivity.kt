@@ -1038,9 +1038,6 @@ fun SplashScreen(onTimeout: () -> Unit) {
                 verticalArrangement = Arrangement.Center
             ) {
                 // Logo (User Picture or fallback)
-                val viewModel: MainViewModel = viewModel()
-                val imageUri by viewModel.profileImageUri.collectAsState(initial = "")
-                
                 Box(
                     modifier = Modifier
                         .size(100.dp)
@@ -1048,21 +1045,12 @@ fun SplashScreen(onTimeout: () -> Unit) {
                         .clip(RoundedCornerShape(28.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (imageUri.isNotEmpty()) {
-                        AsyncImage(
-                            model = imageUri,
-                            contentDescription = "App Logo",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Text(
-                            text = "C",
-                            fontSize = 48.sp,
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.surface
-                        )
-                    }
+                    Text(
+                        text = "C",
+                        fontSize = 48.sp,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.surface
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -1205,7 +1193,6 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(32.dp))
-            val imageUri by viewModel.profileImageUri.collectAsState(initial = "")
             Box(
                 modifier = Modifier
                     .size(80.dp)
@@ -1213,21 +1200,12 @@ fun LoginScreen(
                     .clip(RoundedCornerShape(20.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                if (imageUri.isNotEmpty()) {
-                    AsyncImage(
-                        model = imageUri,
-                        contentDescription = "App Logo",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Text(
-                        text = "C",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.surface
-                    )
-                }
+                Text(
+                    text = "C",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.surface
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -1976,27 +1954,10 @@ fun CortiSenseScreen(
                                     },
                                     label = { Text(translatedLabel, fontSize = 10.sp) },
                                     icon = {
-                                        if (label == "Profile") {
-                                            val imageUri by viewModel.profileImageUri.collectAsState()
-                                            if (imageUri.isNotEmpty()) {
-                                                AsyncImage(
-                                                    model = imageUri,
-                                                    contentDescription = "Profile",
-                                                    modifier = Modifier.size(24.dp).clip(CircleShape),
-                                                    contentScale = ContentScale.Crop
-                                                )
-                                            } else {
-                                                Icon(
-                                                    imageVector = if (selectedTab == label) selectedIcon else icon,
-                                                    contentDescription = label
-                                                )
-                                            }
-                                        } else {
-                                            Icon(
-                                                imageVector = if (selectedTab == label) selectedIcon else icon,
-                                                contentDescription = label
-                                            )
-                                        }
+                                        Icon(
+                                            imageVector = if (selectedTab == label) selectedIcon else icon,
+                                            contentDescription = label
+                                        )
                                     },
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = tealColor,
@@ -2312,13 +2273,46 @@ fun HomeScreen(
                 .padding(horizontal = 24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Notification Icon at Top Right
+            // Top Header: Logo + Greeting + Notifications
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 48.dp),
-                horizontalArrangement = Arrangement.End
+                    .padding(top = 48.dp, bottom = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Logo & Greeting (Top Left)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(16.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "C",
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.surface
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = if(Calendar.getInstance().get(Calendar.AM_PM) == Calendar.AM) stringResource(R.string.morning_greeting) else stringResource(R.string.evening_greeting),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = subtitleColor
+                        )
+                        Text(
+                            text = viewModel.currentUserName,
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = textColor
+                        )
+                    }
+                }
+
+                // Notification Icon (Top Right)
                 val unreadCount by viewModel.unreadNotificationsCount.collectAsState()
                 Box(
                     modifier = Modifier
@@ -2351,49 +2345,6 @@ fun HomeScreen(
                                 )
                             }
                         }
-                    }
-                }
-            }
-
-            // Profile Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 16.dp),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val imageUri by viewModel.profileImageUri.collectAsState()
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .background(primaryColor.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
-                            .clip(RoundedCornerShape(16.dp))
-                    ) {
-                        if (imageUri.isNotEmpty()) {
-                            AsyncImage(
-                                model = imageUri,
-                                contentDescription = "Profile",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(Icons.Default.Person, null, tint = primaryColor, modifier = Modifier.size(28.dp))
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = if(Calendar.getInstance().get(Calendar.AM_PM) == Calendar.AM) stringResource(R.string.morning_greeting) else stringResource(R.string.evening_greeting),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = subtitleColor
-                        )
-                        Text(
-                            text = viewModel.currentUserName,
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = textColor
-                        )
                     }
                 }
             }
@@ -5094,28 +5045,19 @@ fun ProfileMainScreenContent(
                         .fillMaxWidth(0.9f)
                         .aspectRatio(1f),
                     shape = RoundedCornerShape(24.dp),
-                    color = Color.Black,
+                    color = MaterialTheme.colorScheme.primary,
                     tonalElevation = 8.dp
                 ) {
-                    if (imageUri.isNotEmpty()) {
-                        AsyncImage(
-                            model = imageUri,
-                            contentDescription = "Full Profile Picture",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "C",
+                            fontSize = 120.sp,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.surface
                         )
-                    } else {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                Icons.Default.Person,
-                                null,
-                                tint = Color.White,
-                                modifier = Modifier.size(120.dp)
-                            )
-                        }
                     }
                 }
             }
@@ -5149,16 +5091,12 @@ fun ProfileMainScreenContent(
                     .clickable { showImagePreview = true },
                 contentAlignment = Alignment.Center
             ) {
-                if (imageUri.isNotEmpty()) {
-                    AsyncImage(
-                        model = imageUri,
-                        contentDescription = "Profile Picture",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(40.dp))
-                }
+                Text(
+                    text = "C",
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Black,
+                    color = MaterialTheme.colorScheme.surface
+                )
             }
             Spacer(modifier = Modifier.width(20.dp))
             Column {
@@ -5404,33 +5342,17 @@ fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             }
 
             Spacer(modifier = Modifier.height(32.dp))
-
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(contentAlignment = Alignment.BottomEnd) {
-                    Box(
-                        modifier = Modifier.size(100.dp).background(tealColor, RoundedCornerShape(24.dp)).clip(RoundedCornerShape(24.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (imageUri.isNotEmpty()) {
-                            AsyncImage(
-                                model = imageUri,
-                                contentDescription = "Profile Picture",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(50.dp))
-                        }
-                    }
-                    Box(
-                        modifier = Modifier.size(32.dp).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp)).border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.PhotoCamera, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                    }
-                }
-                TextButton(onClick = { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
-                    Text(stringResource(R.string.extracted_change_photo), color = tealColor, fontWeight = FontWeight.Bold)
+                Box(
+                    modifier = Modifier.size(100.dp).background(tealColor, RoundedCornerShape(24.dp)).clip(RoundedCornerShape(24.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "C",
+                        fontSize = 48.sp,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.surface
+                    )
                 }
             }
 
