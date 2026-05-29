@@ -19,11 +19,15 @@ class PreferenceManager(private val context: Context) {
         val LANGUAGE_KEY = stringPreferencesKey("language")
         
         val USERNAME_KEY = stringPreferencesKey("username")
+        val FIRST_NAME_KEY = stringPreferencesKey("first_name")
+        val LAST_NAME_KEY = stringPreferencesKey("last_name")
         val EMAIL_KEY = stringPreferencesKey("email")
         val PASSWORD_KEY = stringPreferencesKey("password")
+        val DOB_KEY = stringPreferencesKey("dob")
         val AGE_KEY = stringPreferencesKey("userAge")
         val GENDER_KEY = stringPreferencesKey("userGender")
         val GOAL_KEY = stringPreferencesKey("userGoal")
+        val MOBILE_KEY = stringPreferencesKey("mobile")
         val PROFILE_IMAGE_URI_KEY = stringPreferencesKey("profileImageUri")
         
         val IS_USER_REGISTERED_KEY = booleanPreferencesKey("isUserRegistered")
@@ -64,11 +68,15 @@ class PreferenceManager(private val context: Context) {
     }
 
     val userName: Flow<String> = context.dataStore.data.map { it[USERNAME_KEY] ?: "" }
+    val userFirstName: Flow<String> = context.dataStore.data.map { it[FIRST_NAME_KEY] ?: "" }
+    val userLastName: Flow<String> = context.dataStore.data.map { it[LAST_NAME_KEY] ?: "" }
     val userEmail: Flow<String> = context.dataStore.data.map { it[EMAIL_KEY] ?: "" }
     val userPassword: Flow<String> = context.dataStore.data.map { it[PASSWORD_KEY] ?: "" }
+    val userDob: Flow<String> = context.dataStore.data.map { it[DOB_KEY] ?: "" }
     val userAge: Flow<String> = context.dataStore.data.map { it[AGE_KEY] ?: "25" }
     val userGender: Flow<String> = context.dataStore.data.map { it[GENDER_KEY] ?: "" }
     val userGoal: Flow<String> = context.dataStore.data.map { it[GOAL_KEY] ?: "" }
+    val userMobile: Flow<String> = context.dataStore.data.map { it[MOBILE_KEY] ?: "" }
     val profileImageUri: Flow<String> = context.dataStore.data.map { it[PROFILE_IMAGE_URI_KEY] ?: "" }
     val isPremium: Flow<Boolean> = context.dataStore.data.map { it[booleanPreferencesKey("is_premium")] ?: false }
     
@@ -129,12 +137,18 @@ class PreferenceManager(private val context: Context) {
         }
     }
     
-    suspend fun updateProfile(name: String, age: String, gender: String, goal: String, imageUri: String) {
+    suspend fun updateProfile(firstName: String, lastName: String, email: String, dob: String, age: String, gender: String, goal: String, mobile: String, imageUri: String) {
         context.dataStore.edit { preferences ->
-            preferences[USERNAME_KEY] = name
+            val fullName = if (lastName.isNotBlank()) "$firstName $lastName" else firstName
+            preferences[USERNAME_KEY] = fullName
+            preferences[FIRST_NAME_KEY] = firstName
+            preferences[LAST_NAME_KEY] = lastName
+            preferences[EMAIL_KEY] = email
+            preferences[DOB_KEY] = dob
             preferences[AGE_KEY] = age
             preferences[GENDER_KEY] = gender
             preferences[GOAL_KEY] = goal
+            preferences[MOBILE_KEY] = mobile
             preferences[PROFILE_IMAGE_URI_KEY] = imageUri
         }
     }

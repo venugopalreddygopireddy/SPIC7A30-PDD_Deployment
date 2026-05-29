@@ -1099,7 +1099,9 @@ fun CustomTextField(
     value: String,
     onValueChange: (String) -> Unit,
     placeholder: String = "",
-    isPassword: Boolean = false
+    isPassword: Boolean = false,
+    readOnly: Boolean = false,
+    modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -1109,7 +1111,8 @@ fun CustomTextField(
         label = { Text(label) },
         placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
         singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
+        readOnly = readOnly,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
@@ -5236,19 +5239,44 @@ fun ProfileMenuItem(icon: ImageVector, title: String, onClick: () -> Unit) {
 
 @Composable
 fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
-    val initialName by viewModel.userName.collectAsState()
+    val initialFirstName by viewModel.userFirstName.collectAsState()
+    val initialLastName by viewModel.userLastName.collectAsState()
     val initialEmail by viewModel.userEmail.collectAsState()
+    val initialDob by viewModel.userDob.collectAsState()
+    val initialMobile by viewModel.userMobile.collectAsState()
     val initialAge by viewModel.userAge.collectAsState()
     val initialGender by viewModel.userGender.collectAsState()
     val initialGoal by viewModel.userGoal.collectAsState()
     val initialImageUri by viewModel.profileImageUri.collectAsState()
 
-    var name by remember(initialName) { mutableStateOf(initialName) }
-    val email = initialEmail
+    var firstName by remember(initialFirstName) { mutableStateOf(initialFirstName) }
+    var lastName by remember(initialLastName) { mutableStateOf(initialLastName) }
+    var email by remember(initialEmail) { mutableStateOf(initialEmail) }
+    var dob by remember(initialDob) { mutableStateOf(initialDob) }
+    var mobile by remember(initialMobile) { mutableStateOf(initialMobile) }
     var age by remember(initialAge) { mutableStateOf(initialAge) }
     var gender by remember(initialGender) { mutableStateOf(initialGender) }
     var goal by remember(initialGoal) { mutableStateOf(initialGoal) }
     var imageUri by remember(initialImageUri) { mutableStateOf(initialImageUri) }
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val calendar = java.util.Calendar.getInstance()
+    val datePickerDialog = android.app.DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            dob = String.format(java.util.Locale.getDefault(), "%02d/%02d/%04d", dayOfMonth, month + 1, year)
+            val today = java.util.Calendar.getInstance()
+            var calculatedAge = today.get(java.util.Calendar.YEAR) - year
+            if (today.get(java.util.Calendar.MONTH) < month || 
+                (today.get(java.util.Calendar.MONTH) == month && today.get(java.util.Calendar.DAY_OF_MONTH) < dayOfMonth)) {
+                calculatedAge--
+            }
+            age = calculatedAge.toString()
+        },
+        calendar.get(java.util.Calendar.YEAR),
+        calendar.get(java.util.Calendar.MONTH),
+        calendar.get(java.util.Calendar.DAY_OF_MONTH)
+    )
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
@@ -5280,11 +5308,30 @@ fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            CustomTextField(label = stringResource(R.string.full_name), value = name, onValueChange = { name = it }, placeholder = stringResource(R.string.fullname_placeholder))
+            CustomTextField(label = "First Name", value = firstName, onValueChange = { firstName = it }, placeholder = "Enter First Name")
             Spacer(modifier = Modifier.height(16.dp))
-            CustomTextField(label = stringResource(R.string.email_address), value = email, onValueChange = {}, placeholder = stringResource(R.string.email_placeholder))
+            CustomTextField(label = "Last Name", value = lastName, onValueChange = { lastName = it }, placeholder = "Enter Last Name")
             Spacer(modifier = Modifier.height(16.dp))
-            CustomTextField(label = stringResource(R.string.age), value = age, onValueChange = { age = it }, placeholder = stringResource(R.string.enter_age))
+            CustomTextField(label = stringResource(R.string.email_address), value = email, onValueChange = { email = it }, placeholder = stringResource(R.string.email_placeholder))
+            Spacer(modifier = Modifier.height(16.dp))
+            CustomTextField(label = "Mobile Number", value = mobile, onValueChange = { mobile = it }, placeholder = "Enter Mobile Number")
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Box(modifier = Modifier.fillMaxWidth().clickable { datePickerDialog.show() }) {
+                CustomTextField(
+                    label = "Date of Birth", 
+                    value = dob, 
+                    onValueChange = {}, 
+                    placeholder = "DD/MM/YYYY",
+                    readOnly = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                // Invisible box over the text field to intercept clicks
+                Box(modifier = Modifier.matchParentSize().clickable { datePickerDialog.show() })
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            CustomTextField(label = stringResource(R.string.age), value = age, onValueChange = {}, placeholder = stringResource(R.string.enter_age), readOnly = true)
             Spacer(modifier = Modifier.height(16.dp))
             CustomTextField(label = stringResource(R.string.gender), value = gender, onValueChange = { gender = it }, placeholder = stringResource(R.string.select_gender))
             Spacer(modifier = Modifier.height(16.dp))
@@ -5294,7 +5341,7 @@ fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
 
             Button(
                 onClick = {
-                    viewModel.updateProfile(name, age, gender, goal, imageUri)
+                    viewModel.updateProfile(firstName, lastName, email, dob, age, gender, goal, mobile, imageUri)
                     onBack()
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),

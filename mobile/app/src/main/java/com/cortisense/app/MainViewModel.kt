@@ -72,6 +72,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _userName = MutableStateFlow("")
     val userName = _userName.asStateFlow()
 
+    private val _userFirstName = MutableStateFlow("")
+    val userFirstName = _userFirstName.asStateFlow()
+
+    private val _userLastName = MutableStateFlow("")
+    val userLastName = _userLastName.asStateFlow()
+
+    private val _userDob = MutableStateFlow("")
+    val userDob = _userDob.asStateFlow()
+
+    private val _userMobile = MutableStateFlow("")
+    val userMobile = _userMobile.asStateFlow()
+
     private val _userPassword = MutableStateFlow("")
     val userPassword = _userPassword.asStateFlow()
 
@@ -255,6 +267,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _userName.value = it
                 currentUserName = it
             } }
+            launch { preferenceManager.userFirstName.collect { _userFirstName.value = it } }
+            launch { preferenceManager.userLastName.collect { _userLastName.value = it } }
+            launch { preferenceManager.userDob.collect { _userDob.value = it } }
+            launch { preferenceManager.userMobile.collect { _userMobile.value = it } }
             launch { preferenceManager.userPassword.collect { _userPassword.value = it } }
             launch { preferenceManager.userAge.collect { _userAge.value = it } }
             launch { preferenceManager.userGender.collect { _userGender.value = it } }
@@ -610,9 +626,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun updateProfile(name: String, age: String, gender: String, goal: String, imageUri: String) {
+    fun updateProfile(firstName: String, lastName: String, email: String, dob: String, age: String, gender: String, goal: String, mobile: String, imageUri: String) {
         viewModelScope.launch {
-            preferenceManager.updateProfile(name, age, gender, goal, imageUri)
+            preferenceManager.updateProfile(firstName, lastName, email, dob, age, gender, goal, mobile, imageUri)
         }
     }
 
