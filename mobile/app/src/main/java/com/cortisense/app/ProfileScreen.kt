@@ -50,6 +50,18 @@ fun ProfileScreen(
     val initialLastName by viewModel.userLastName.collectAsState()
     val initialDob by viewModel.userDob.collectAsState()
     val initialMobile by viewModel.userMobile.collectAsState()
+    val userEmail by viewModel.userEmail.collectAsState()
+    val initialAge by viewModel.userAge.collectAsState()
+    val initialGender by viewModel.userGender.collectAsState()
+    val initialGoal by viewModel.userGoal.collectAsState()
+    val initialImageUri by viewModel.profileImageUri.collectAsState()
+
+    var imageUri by remember(initialImageUri) { mutableStateOf(initialImageUri) }
+    
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = { uri -> if (uri != null) imageUri = uri.toString() }
+    )
 
     var firstName by remember(initialFirstName) { mutableStateOf(initialFirstName) }
     var lastName by remember(initialLastName) { mutableStateOf(initialLastName) }
