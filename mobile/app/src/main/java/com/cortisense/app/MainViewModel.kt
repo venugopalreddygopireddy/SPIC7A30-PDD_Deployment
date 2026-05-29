@@ -728,6 +728,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 stressDao.insertRecord(record)
                 
+                // Reset completed tasks for new recommendations
+                preferenceManager.updateCompletedTasks("", java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date()))
+                _completedTasks.value = emptySet()
+                
                 // --- Save to Clinical Database (The New History) ---
                 val clinicalEntity = StressCheckInEntity(
                     stressLevel = finalLevel,
@@ -849,7 +853,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 channelId = NotificationHelper.CHANNEL_ENGAGEMENT,
                 notificationId = (1000..9999).random(),
                 title = "Task Completed! 🎉",
-                message = "Great job completing your stress relief task! You earned $coinReward coins."
+                message = "Great job completing your stress relief task!"
             )
         }
     }
