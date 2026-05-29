@@ -1045,11 +1045,11 @@ fun SplashScreen(onTimeout: () -> Unit) {
                         .clip(RoundedCornerShape(28.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "C",
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.surface
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "App Logo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
                 }
 
@@ -1200,11 +1200,11 @@ fun LoginScreen(
                     .clip(RoundedCornerShape(20.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "C",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.surface
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
             }
 
@@ -2281,35 +2281,36 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Logo & Greeting (Top Left)
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // Logo, Greeting, Name (Top Left)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Box(
                         modifier = Modifier
-                            .size(56.dp)
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
-                            .clip(RoundedCornerShape(16.dp)),
+                            .size(48.dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp))
+                            .clip(RoundedCornerShape(14.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "C",
-                            fontSize = 32.sp,
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.surface
+                        Image(
+                            painter = painterResource(id = R.drawable.app_logo),
+                            contentDescription = "App Logo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
                     }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text(
-                            text = if(Calendar.getInstance().get(Calendar.AM_PM) == Calendar.AM) stringResource(R.string.morning_greeting) else stringResource(R.string.evening_greeting),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = subtitleColor
-                        )
-                        Text(
-                            text = viewModel.currentUserName,
-                            style = MaterialTheme.typography.headlineMedium,
-                            color = textColor
-                        )
-                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = if(Calendar.getInstance().get(Calendar.AM_PM) == Calendar.AM) stringResource(R.string.morning_greeting) else stringResource(R.string.evening_greeting),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = subtitleColor
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = viewModel.currentUserName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor,
+                        maxLines = 1
+                    )
                 }
 
                 // Notification Icon (Top Right)
@@ -5052,11 +5053,11 @@ fun ProfileMainScreenContent(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "C",
-                            fontSize = 120.sp,
-                            fontWeight = FontWeight.Black,
-                            color = MaterialTheme.colorScheme.surface
+                        Image(
+                            painter = painterResource(id = R.drawable.app_logo),
+                            contentDescription = "App Logo",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
                     }
                 }
@@ -5091,11 +5092,11 @@ fun ProfileMainScreenContent(
                     .clickable { showImagePreview = true },
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "C",
-                    fontSize = 40.sp,
-                    fontWeight = FontWeight.Black,
-                    color = MaterialTheme.colorScheme.surface
+                Image(
+                    painter = painterResource(id = R.drawable.app_logo),
+                    contentDescription = "App Logo",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
             }
             Spacer(modifier = Modifier.width(20.dp))
@@ -5347,11 +5348,11 @@ fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                     modifier = Modifier.size(100.dp).background(tealColor, RoundedCornerShape(24.dp)).clip(RoundedCornerShape(24.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "C",
-                        fontSize = 48.sp,
-                        fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.surface
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "App Logo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
                 }
             }
