@@ -925,40 +925,64 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 val filtered = if (cutoff > 0) checkins.filter { it.timestamp >= cutoff } else checkins
                 
-                // Build text report
-                val sb = StringBuilder()
-                sb.appendLine("=== CortiSense Wellness Report ===")
-                sb.appendLine("User: ${_userName.value}")
-                sb.appendLine("Period: $period | Format: $format")
-                sb.appendLine("Generated: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}")
-                sb.appendLine("Current Streak: ${_currentStreak.value} days")
-                sb.appendLine("Total Check-ins: ${_totalCheckins.value}")
-                sb.appendLine("")
-                sb.appendLine("--- Check-in History (${filtered.size} records) ---")
-                filtered.forEach { c ->
-                    sb.appendLine("[${c.date} ${c.time}] Stress: ${c.score} (${c.stressLevel}) | Mood: ${c.mood} | Anxiety: ${c.anxiety} | Sleep: ${c.sleepDuration}h | Workload: ${c.workload}")
+                val downloadsDir = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+                if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                val fileName = "CortiSense_Report_${System.currentTimeMillis()}"
+
+                if (format == "CSV") {
+                    val file = java.io.File(downloadsDir, "$fileName.csv")
+                    val csvSb = StringBuilder()
+                    csvSb.appendLine("Date,Time,Stress Score,Stress Level,Mood,Anxiety,Sleep Duration(h),Workload")
+                    filtered.forEach { c ->
+                        csvSb.appendLine("${c.date},${c.time},${c.score},${c.stressLevel},${c.mood},${c.anxiety},${c.sleepDuration},${c.workload}")
+                    }
+                    file.writeText(csvSb.toString())
+                    onComplete("Data exported to Downloads as CSV!")
+                } else {
+                    val file = java.io.File(downloadsDir, "$fileName.pdf")
+                    val document = android.graphics.pdf.PdfDocument()
+                    var pageNum = 1
+                    var pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(595, 842, pageNum).create()
+                    var page = document.startPage(pageInfo)
+                    var canvas = page.canvas
+                    val paint = android.graphics.Paint().apply {
+                        textSize = 12f
+                        color = android.graphics.Color.BLACK
+                    }
+                    val boldPaint = android.graphics.Paint().apply {
+                        textSize = 14f
+                        color = android.graphics.Color.BLACK
+                        isFakeBoldText = true
+                    }
+                    
+                    var y = 50f
+                    canvas.drawText("=== CortiSense Wellness Report ===", 50f, y, boldPaint); y += 30f
+                    canvas.drawText("User: ${_userName.value}", 50f, y, paint); y += 20f
+                    canvas.drawText("Period: $period | Format: $format", 50f, y, paint); y += 20f
+                    canvas.drawText("Generated: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}", 50f, y, paint); y += 40f
+                    
+                    canvas.drawText("--- Check-in History (${filtered.size} records) ---", 50f, y, boldPaint); y += 30f
+                    
+                    filtered.forEach { c ->
+                        if (y > 780f) {
+                            document.finishPage(page)
+                            pageNum++
+                            pageInfo = android.graphics.pdf.PdfDocument.PageInfo.Builder(595, 842, pageNum).create()
+                            page = document.startPage(pageInfo)
+                            canvas = page.canvas
+                            y = 50f
+                        }
+                        canvas.drawText("[${c.date} ${c.time}] Score: ${c.score} (${c.stressLevel})", 50f, y, paint); y += 20f
+                        canvas.drawText("Mood: ${c.mood} | Anxiety: ${c.anxiety} | Sleep: ${c.sleepDuration}h | Workload: ${c.workload}", 70f, y, paint); y += 30f
+                    }
+                    
+                    document.finishPage(page)
+                    val out = java.io.FileOutputStream(file)
+                    document.writeTo(out)
+                    document.close()
+                    out.close()
+                    onComplete("Report saved to Downloads as PDF!")
                 }
-                if (records.isNotEmpty()) {
-                    val avg = records.map { it.score }.average().toInt()
-                    sb.appendLine("")
-                    sb.appendLine("--- Summary ---")
-                    sb.appendLine("Average Stress Score: $avg")
-                    sb.appendLine("Best Day: ${_bestDayThisWeek.value}")
-                }
-                
-                val shareText = sb.toString()
-                val sendIntent = Intent().apply {
-                    action = Intent.ACTION_SEND
-                    putExtra(Intent.EXTRA_TEXT, shareText)
-                    putExtra(Intent.EXTRA_SUBJECT, "CortiSense Wellness Report - $period")
-                    type = "text/plain"
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                val shareIntent = Intent.createChooser(sendIntent, "Export Report").apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                getApplication<Application>().startActivity(shareIntent)
-                onComplete("Report exported successfully!")
             } catch (e: Exception) {
                 onComplete("Export failed: ${e.message}")
             }
@@ -966,7 +990,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun exportData(format: String) {
-        // Implementation for data export logic
+        exportReport("All Time", format) { msg ->
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                android.widget.Toast.makeText(getApplication<Application>(), msg, android.widget.Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     fun deleteUserAccount(onSuccess: () -> Unit) {
