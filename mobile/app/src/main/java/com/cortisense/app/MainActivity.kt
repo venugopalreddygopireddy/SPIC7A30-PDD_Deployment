@@ -203,8 +203,6 @@ class MainActivity : AppCompatActivity() {
                         composable("splash") {
                             SplashScreen(onTimeout = { 
                                 val destination = when {
-                                    isUserRegistered && isLoggedIn && isProfileCreated -> "dashboard"
-                                    isUserRegistered && isLoggedIn && !isProfileCreated -> "profile_setup"
                                     isUserRegistered -> "login"
                                     else -> "welcome"
                                 }
@@ -1051,7 +1049,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
                         painter = painterResource(id = R.drawable.app_logo),
                         contentDescription = "App Logo",
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Fit
                     )
                 }
 
@@ -1206,7 +1204,7 @@ fun LoginScreen(
                     painter = painterResource(id = R.drawable.app_logo),
                     contentDescription = "App Logo",
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Fit
                 )
             }
 
@@ -2265,6 +2263,10 @@ fun HomeScreen(
     val todayCheckins by viewModel.todayCheckinsCount.collectAsState()
     val todaySleep by viewModel.todaySleepDuration.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.fetchDashboardSummary()
+    }
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
@@ -2284,35 +2286,37 @@ fun HomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Logo, Greeting, Name (Top Left)
+                // Logo, Greeting, Name (Top Left)
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(14.dp))
-                            .clip(RoundedCornerShape(14.dp)),
+                            .size(64.dp)
+                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(16.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
                             painter = painterResource(id = R.drawable.app_logo),
                             contentDescription = "App Logo",
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Fit
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = if(Calendar.getInstance().get(Calendar.AM_PM) == Calendar.AM) stringResource(R.string.morning_greeting) else stringResource(R.string.evening_greeting),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = subtitleColor
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = viewModel.currentUserName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = textColor,
-                        maxLines = 1
-                    )
+                    Column {
+                        Text(
+                            text = if(Calendar.getInstance().get(Calendar.AM_PM) == Calendar.AM) stringResource(R.string.morning_greeting) else stringResource(R.string.evening_greeting),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = subtitleColor
+                        )
+                        Text(
+                            text = viewModel.currentUserName,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = textColor,
+                            maxLines = 1
+                        )
+                    }
                 }
 
                 // Notification Icon (Top Right)
@@ -5059,7 +5063,7 @@ fun ProfileMainScreenContent(
                             painter = painterResource(id = R.drawable.app_logo),
                             contentDescription = "App Logo",
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Fit
                         )
                     }
                 }
@@ -5098,7 +5102,7 @@ fun ProfileMainScreenContent(
                     painter = painterResource(id = R.drawable.app_logo),
                     contentDescription = "App Logo",
                     modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    contentScale = ContentScale.Fit
                 )
             }
             Spacer(modifier = Modifier.width(20.dp))
@@ -5354,7 +5358,7 @@ fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                         painter = painterResource(id = R.drawable.app_logo),
                         contentDescription = "App Logo",
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Fit
                     )
                 }
             }
