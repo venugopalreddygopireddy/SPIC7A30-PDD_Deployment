@@ -1288,27 +1288,7 @@ fun LoginScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = {
-                    try {
-                        val intent = android.accounts.AccountManager.newChooseAccountIntent(
-                            null, null, arrayOf("com.google"), null, null, null, null
-                        )
-                        googleSignInLauncher.launch(intent)
-                    } catch (e: Exception) {
-                        errorMessage = context.getString(R.string.auth_error_google)
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant, contentColor = MaterialTheme.colorScheme.onSurface),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Text(stringResource(R.string.sign_in_with_google), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-            }
 
             Spacer(modifier = Modifier.weight(1f))
 
@@ -1574,42 +1554,7 @@ fun SignupScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
 
-            Button(
-                onClick = {
-                    try {
-                        val intent = android.accounts.AccountManager.newChooseAccountIntent(
-                            null, null, arrayOf("com.google"), null, null, null, null
-                        )
-                        googleSignInLauncher.launch(intent)
-                    } catch (e: Exception) {
-                        errorMessage = context.getString(R.string.auth_error_google)
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = tealColor), // Make it prominent for new users
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(imageVector = Icons.Default.Login, contentDescription = null, tint = MaterialTheme.colorScheme.surface)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(stringResource(R.string.sign_in_with_google), fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "OR",
-                color = subtitleColor,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
 
             Button(
                 onClick = {
