@@ -260,9 +260,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             launch { preferenceManager.userGender.collect { _userGender.value = it } }
             launch { preferenceManager.userGoal.collect { _userGoal.value = it } }
             launch { preferenceManager.profileImageUri.collect { _profileImageUri.value = it } }
-            launch { preferenceManager.currentStreak.collect { _currentStreak.value = it } }
-            launch { preferenceManager.longestStreak.collect { _longestStreak.value = it } }
-            launch { preferenceManager.totalCheckins.collect { _totalCheckins.value = it } }
+            // Disabled to prevent overwriting API dashboard data
+            // launch { preferenceManager.currentStreak.collect { _currentStreak.value = it } }
+            // launch { preferenceManager.longestStreak.collect { _longestStreak.value = it } }
+            // launch { preferenceManager.totalCheckins.collect { _totalCheckins.value = it } }
             launch { preferenceManager.lastCheckinDate.collect { _lastCheckinDate.value = it } }
             launch { preferenceManager.isPremium.collect { _isPremium.value = it } }
             launch { preferenceManager.userCoins.collect { _userCoins.value = it } }
@@ -973,11 +974,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun fetchDashboardSummary() {
+        android.util.Log.d("DashboardAPI", "fetchDashboardSummary called")
         viewModelScope.launch {
             try {
-                val token = preferenceManager.jwtToken.firstOrNull()
+                // Use _jwtToken.value instead of waiting for preferenceManager to avoid race conditions
+                val token = _jwtToken.value.ifEmpty { preferenceManager.jwtToken.firstOrNull() }
                 if (!token.isNullOrEmpty()) {
+                    android.util.Log.d("DashboardAPI", "dashboard API request started")
                     val summary = RetrofitClient.instance.getDashboardSummary()
+                    android.util.Log.d("DashboardAPI", "dashboard API response received: ${summary.totalCheckins}")
                     
                     _totalCheckins.value = summary.totalCheckins.toString()
                     _currentStreak.value = summary.currentStreak.toString()
@@ -997,8 +1002,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         val mins = ((sleepDec - hrs) * 60).toInt()
                         _todaySleepDuration.value = "${hrs}h ${mins}m"
                     }
+                } else {
+                    android.util.Log.d("DashboardAPI", "Token is null or empty, skipping dashboard fetch")
                 }
             } catch (e: Exception) {
+                android.util.Log.e("DashboardAPI", "dashboard API failed", e)
                 e.printStackTrace()
             }
         }
