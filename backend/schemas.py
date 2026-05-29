@@ -56,6 +56,7 @@ class CheckInRequest(BaseModel):
 
     age: int
     gender: str
+    mobile_number: str = ""
     occupation: str
     marital_status: str
 
@@ -141,6 +142,7 @@ class StressCheckInResponse(BaseModel):
     workload: str
     mood: str
     anxiety: str
+    mobile_number: str = ""
 
     class Config:
         from_attributes = True

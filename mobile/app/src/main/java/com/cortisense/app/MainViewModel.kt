@@ -702,8 +702,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             errorMessage = null
             try {
                 val request = CheckInRequest(
-                    age = checkInAge.toIntOrNull() ?: 25,
-                    gender = checkInGender,
+                    age = userAge.value.toIntOrNull() ?: 25,
+                    gender = userGender.value,
                     mobileNumber = userMobile.value,
                     occupation = checkInOccupation,
                     maritalStatus = checkInMaritalStatus,
@@ -766,8 +766,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     score = response.score,
                     recommendation = response.recommendation,
                     isEscalated = response.isEscalated,
-                    age = checkInAge.toIntOrNull() ?: 25,
-                    gender = checkInGender,
+                    age = userAge.value.toIntOrNull() ?: 25,
+                    gender = userGender.value,
                     occupation = checkInOccupation,
                     maritalStatus = checkInMaritalStatus,
                     sleepDuration = checkInSleepDuration,

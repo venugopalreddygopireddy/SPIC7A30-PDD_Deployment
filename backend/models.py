@@ -51,6 +51,8 @@ class StressCheckIn(Base):
 
     gender = Column(String)
 
+    mobile_number = Column(String, default="")
+
     occupation = Column(String)
 
     marital_status = Column(String)
