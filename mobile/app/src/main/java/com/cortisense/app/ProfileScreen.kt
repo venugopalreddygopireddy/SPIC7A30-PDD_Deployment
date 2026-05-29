@@ -56,20 +56,20 @@ fun ProfileScreen(
     val initialGoal by viewModel.userGoal.collectAsState()
     val initialImageUri by viewModel.profileImageUri.collectAsState()
 
-    var imageUri by remember(initialImageUri) { mutableStateOf(initialImageUri) }
+    var imageUri by remember(initialImageUri) { mutableStateOf<String>(initialImageUri) }
     
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri -> if (uri != null) imageUri = uri.toString() }
     )
 
-    var firstName by remember(initialFirstName) { mutableStateOf(initialFirstName) }
-    var lastName by remember(initialLastName) { mutableStateOf(initialLastName) }
-    var dob by remember(initialDob) { mutableStateOf(initialDob) }
-    var mobile by remember(initialMobile) { mutableStateOf(initialMobile) }
-    var age by remember(initialAge) { mutableStateOf(initialAge) }
-    var gender by remember(initialGender) { mutableStateOf(initialGender) }
-    var goal by remember(initialGoal) { mutableStateOf(initialGoal) }
+    var firstName by remember(initialFirstName) { mutableStateOf<String>(initialFirstName) }
+    var lastName by remember(initialLastName) { mutableStateOf<String>(initialLastName) }
+    var dob by remember(initialDob) { mutableStateOf<String>(initialDob) }
+    var mobile by remember(initialMobile) { mutableStateOf<String>(initialMobile) }
+    var age by remember(initialAge) { mutableStateOf<String>(initialAge) }
+    var gender by remember(initialGender) { mutableStateOf<String>(initialGender) }
+    var goal by remember(initialGoal) { mutableStateOf<String>(initialGoal) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val calendar = java.util.Calendar.getInstance()
