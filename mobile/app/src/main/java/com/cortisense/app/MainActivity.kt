@@ -132,6 +132,18 @@ fun getTranslatedReason(reasonKey: String): String {
 }
 
 class MainActivity : AppCompatActivity() {
+    private var lastInteractionTime = System.currentTimeMillis()
+    private var onInactivityTimeout: (() -> Unit)? = null
+
+    override fun onUserInteraction() {
+        super.onUserInteraction()
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastInteractionTime > 5 * 60 * 1000L) { // 5 minutes inactivity
+            onInactivityTimeout?.invoke()
+        }
+        lastInteractionTime = currentTime
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -196,10 +208,32 @@ class MainActivity : AppCompatActivity() {
                 val isProfileCreated by viewModel.isProfileCreated.collectAsState()
                 val isLoggedIn by viewModel.isLoggedIn.collectAsState()
 
-                NavHost(
-                    navController = navController, 
-                    startDestination = "splash"
-                ) {
+                val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+                val coroutineScope = rememberCoroutineScope()
+
+                DisposableEffect(Unit) {
+                    onInactivityTimeout = {
+                        if (viewModel.isLoggedIn.value) {
+                            viewModel.logout()
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Session expired, login again",
+                                    duration = androidx.compose.material3.SnackbarDuration.Short
+                                )
+                            }
+                            navController.navigate("login") {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        }
+                    }
+                    onDispose { onInactivityTimeout = null }
+                }
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    NavHost(
+                        navController = navController, 
+                        startDestination = "splash"
+                    ) {
                         composable("splash") {
                             SplashScreen(onTimeout = { 
                                 val destination = when {
@@ -459,11 +493,24 @@ class MainActivity : AppCompatActivity() {
                         composable("chat") {
                             CortiChatScreen(viewModel = viewModel)
                         }
-                    }
-            }
-        }
-    }
-}
+                    } // closes NavHost
+
+                    androidx.compose.material3.SnackbarHost(
+                        hostState = snackbarHostState,
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                        snackbar = { data ->
+                            androidx.compose.material3.Snackbar(
+                                snackbarData = data,
+                                containerColor = Color.Red,
+                                contentColor = Color.White
+                            )
+                        }
+                    )
+                } // closes Box
+            } // closes CortiSenseTheme
+        } // closes setContent
+    } // closes onCreate
+} // closes MainActivity
 
 @Composable
 fun ProfileSetupScreen(
