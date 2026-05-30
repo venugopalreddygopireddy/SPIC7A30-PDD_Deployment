@@ -152,60 +152,64 @@ export default function Dashboard() {
           <h3 className="text-white font-bold text-lg">Stress Trends</h3>
           <p className="text-slate-400 text-xs mb-8">Daily Average Stress Score</p>
           
-          <div className="relative w-full h-[200px]">
-            <svg viewBox={`-20 -20 ${width + 40} ${height + 20}`} preserveAspectRatio="none" className="w-full h-full overflow-visible">
-              <defs>
-                <linearGradient id="waveGradient" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#82e0aa" stopOpacity="0.2" />
-                  <stop offset="100%" stopColor="#82e0aa" stopOpacity="0" />
-                </linearGradient>
-              </defs>
+          {/* Scrollable Container to prevent SVG squishing on mobile */}
+          <div className="w-full overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+            <div className="relative w-[600px] sm:w-full h-[200px] min-w-[600px]">
+              <svg viewBox={`-20 -20 ${width + 40} ${height + 20}`} preserveAspectRatio="none" className="w-full h-full overflow-visible">
+                <defs>
+                  <linearGradient id="waveGradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="#82e0aa" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#82e0aa" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
 
-              {/* Grid Lines */}
-              <line x1="0" y1="0" x2={width} y2="0" stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
-              <line x1="0" y1={graphHeight / 2} x2={width} y2={graphHeight / 2} stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
-              <line x1="0" y1={graphHeight} x2={width} y2={graphHeight} stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
+                {/* Grid Lines */}
+                <line x1="0" y1="0" x2={width} y2="0" stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
+                <line x1="0" y1={graphHeight / 2} x2={width} y2={graphHeight / 2} stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
+                <line x1="0" y1={graphHeight} x2={width} y2={graphHeight} stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
 
-              {/* Area Fill */}
-              {fillPathD && (
-                <path d={fillPathD} fill="url(#waveGradient)" />
-              )}
-              
-              {/* Stroke Path */}
-              {pathD && (
-                <path d={pathD} fill="none" stroke="#82e0aa" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-              )}
+                {/* Area Fill */}
+                {fillPathD && (
+                  <path d={fillPathD} fill="url(#waveGradient)" />
+                )}
+                
+                {/* Stroke Path */}
+                {pathD && (
+                  <path d={pathD} fill="none" stroke="#82e0aa" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                )}
 
-              {/* Points & Labels */}
-              {points.map((p, i) => (
-                <g key={i}>
-                  {/* Point Circle */}
-                  <circle cx={p.x} cy={p.y} r="10" fill="white" stroke="#82e0aa" strokeWidth="4" />
-                  {/* Score Text */}
-                  <text 
-                    x={p.x} 
-                    y={p.y - 20} 
-                    fill="white" 
-                    fontSize="22" 
-                    fontWeight="bold" 
-                    textAnchor="middle"
-                  >
-                    {p.score}
-                  </text>
-                  {/* Day Label */}
-                  <text 
-                    x={p.x} 
-                    y={graphHeight + 35} 
-                    fill="#94a3b8" 
-                    fontSize="18" 
-                    fontWeight="bold" 
-                    textAnchor="middle"
-                  >
-                    {new Date(p.dateStr).toLocaleDateString('en-US', { weekday: 'short' })}
-                  </text>
-                </g>
-              ))}
-            </svg>
+                {/* Points & Labels */}
+                {points.map((p, i) => (
+                  <g key={i}>
+                    {/* Point Circle */}
+                    {/* Scaled rx/ry to counteract preserveAspectRatio="none" distortion? No, we use fixed min-width now, so it won't distort much. */}
+                    <circle cx={p.x} cy={p.y} r="10" fill="white" stroke="#82e0aa" strokeWidth="4" />
+                    {/* Score Text */}
+                    <text 
+                      x={p.x} 
+                      y={p.y - 20} 
+                      fill="white" 
+                      fontSize="22" 
+                      fontWeight="bold" 
+                      textAnchor="middle"
+                    >
+                      {p.score}
+                    </text>
+                    {/* Day Label */}
+                    <text 
+                      x={p.x} 
+                      y={graphHeight + 35} 
+                      fill="#94a3b8" 
+                      fontSize="18" 
+                      fontWeight="bold" 
+                      textAnchor="middle"
+                    >
+                      {new Date(p.dateStr).toLocaleDateString('en-US', { weekday: 'short' })}
+                    </text>
+                  </g>
+                ))}
+              </svg>
+            </div>
           </div>
         </div>
 
