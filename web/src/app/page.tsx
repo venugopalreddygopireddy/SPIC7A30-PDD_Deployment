@@ -202,23 +202,68 @@ export default function Dashboard() {
         </div>
 
         {/* Streak Calendar (moved from Monthly tab) */}
-        {monthlyData && (
-          <div className="bg-slate-900/50 border border-slate-800 rounded-[32px] p-6 shadow-lg shadow-black/20">
-            <h3 className="text-white font-bold text-lg mb-4">Calendar Activity</h3>
-            <div className="grid grid-cols-7 gap-2">
-              {Object.keys(monthlyData.calendar_activity).slice(0, 28).map((dateStr, i) => {
-                const score = monthlyData.calendar_activity[dateStr];
-                let bg = 'bg-slate-800';
-                if (score > 80) bg = 'bg-rose-500';
-                else if (score > 60) bg = 'bg-orange-500';
-                else if (score > 40) bg = 'bg-yellow-500';
-                else if (score > 0) bg = 'bg-emerald-500';
-                
-                return <div key={i} className={`aspect-square rounded-md ${bg} opacity-80 shadow-inner`}></div>;
-              })}
+        {monthlyData && (() => {
+          const today = new Date();
+          const currentYear = today.getFullYear();
+          const currentMonth = today.getMonth();
+          const currentDay = today.getDate();
+          
+          const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+          const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+          const firstDayOfWeek = firstDayOfMonth.getDay(); // 0 is Sunday
+          
+          const monthName = firstDayOfMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+          const checkinDates = new Set(Object.keys(monthlyData.calendar_activity));
+          
+          const totalCells = daysInMonth + firstDayOfWeek;
+          const cells = [];
+          for (let i = 0; i < Math.ceil(totalCells / 7) * 7; i++) {
+            const day = i - firstDayOfWeek + 1;
+            if (day > 0 && day <= daysInMonth) {
+              const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const isCheckedIn = checkinDates.has(dateStr);
+              const isToday = day === currentDay;
+              const isFuture = day > currentDay;
+              
+              let bg = 'bg-slate-700/50';
+              let border = 'border border-transparent';
+              if (isCheckedIn) bg = 'bg-emerald-500';
+              else if (isFuture) bg = 'bg-transparent';
+              
+              if (isToday) border = 'border-2 border-emerald-500';
+              
+              cells.push(
+                <div key={i} className={`aspect-square rounded-[10px] ${bg} ${border} flex items-center justify-center m-[3px]`} />
+              );
+            } else {
+              cells.push(<div key={i} className="aspect-square m-[3px] bg-transparent" />);
+            }
+          }
+
+          return (
+            <div className="bg-slate-900/50 border border-slate-800 rounded-[28px] p-5 shadow-lg shadow-black/20">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-emerald-500 font-extrabold text-lg">{monthName}</h3>
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                  <span className="text-slate-400 text-xs">Visited</span>
+                  <div className="w-2.5 h-2.5 rounded-full bg-slate-700/50 border border-slate-600"></div>
+                  <span className="text-slate-400 text-xs">Missed</span>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-7 mb-2">
+                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                  <div key={day} className="text-center text-slate-400 text-xs font-bold">{day}</div>
+                ))}
+              </div>
+              
+              <div className="grid grid-cols-7">
+                {cells}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     );
   };
