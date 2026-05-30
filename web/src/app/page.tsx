@@ -124,21 +124,44 @@ export default function Dashboard() {
     const paddingBottom = 40; 
     const height = graphHeight + paddingBottom;
     const width = 1000; // arbitrary internal SVG width for viewBox
-    const step = trendsData.trends.length > 1 ? width / (trendsData.trends.length - 1) : width;
+    const step = width / 6; // 7 days = 6 intervals
+
+    // Generate Monday to Sunday of the current week
+    const today = new Date();
+    let currentDayOfWeek = today.getDay();
+    if (currentDayOfWeek === 0) currentDayOfWeek = 7; // Sunday = 7
+    
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - (currentDayOfWeek - 1));
+    
+    const weekDays: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      weekDays.push(dateStr);
+    }
+
+    const dailyScores: Record<string, number> = {};
+    trendsData.trends.forEach(t => {
+      dailyScores[t.date] = t.score;
+    });
 
     let pathD = "";
     const points: {x: number, y: number, score: number, dateStr: string}[] = [];
 
-    trendsData.trends.forEach((item, index) => {
+    weekDays.forEach((dateStr, index) => {
+      const score = dailyScores[dateStr] || 0;
       const x = index * step;
-      const y = graphHeight - (item.score / maxScore) * graphHeight;
-      points.push({ x, y, score: item.score, dateStr: item.date });
+      const y = graphHeight - (score / maxScore) * graphHeight;
+      points.push({ x, y, score, dateStr });
 
       if (index === 0) {
         pathD += `M ${x} ${y} `;
       } else {
         const prevX = (index - 1) * step;
-        const prevY = graphHeight - (trendsData.trends[index - 1].score / maxScore) * graphHeight;
+        const prevScore = dailyScores[weekDays[index - 1]] || 0;
+        const prevY = graphHeight - (prevScore / maxScore) * graphHeight;
         pathD += `C ${prevX + step / 2} ${prevY}, ${x - step / 2} ${y}, ${x} ${y} `;
       }
     });
