@@ -1,4 +1,6 @@
-"use client";
+const fs = require('fs');
+
+const code = `"use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, User, Moon, Zap, Briefcase, Activity as RunIcon, Check, BrainCircuit } from 'lucide-react';
@@ -21,7 +23,7 @@ const FloatingInput = ({ label, value, onChange, type = "text", readOnly = false
       value={value} 
       onChange={e => onChange(e.target.value)} 
       readOnly={readOnly}
-      className={`peer w-full bg-transparent border ${readOnly ? 'border-slate-800 text-slate-500' : 'border-slate-700 text-white'} rounded-lg px-4 py-3 focus:border-slate-500 outline-none transition-colors`} 
+      className={\`peer w-full bg-transparent border \${readOnly ? 'border-slate-800 text-slate-500' : 'border-slate-700 text-white'} rounded-lg px-4 py-3 focus:border-slate-500 outline-none transition-colors\`} 
     />
     <label className="absolute left-3 -top-2.5 bg-[#1C1E2B] px-1 text-xs text-slate-400 font-medium">
       {label}
@@ -47,7 +49,7 @@ const ChipGroup = ({ options, selected, onChange, multiple = false }: any) => {
         <button
           key={opt}
           onClick={() => toggle(opt)}
-          className={`px-5 py-2.5 rounded-xl text-sm font-medium border transition-all ${isSelected(opt) ? 'bg-[#3B354D] text-[#E2DCEF] border-transparent' : 'bg-transparent text-slate-300 border-slate-700'}`}
+          className={\`px-5 py-2.5 rounded-xl text-sm font-medium border transition-all \${isSelected(opt) ? 'bg-[#3B354D] text-[#E2DCEF] border-transparent' : 'bg-transparent text-slate-300 border-slate-700'}\`}
         >
           {opt}
         </button>
@@ -65,14 +67,14 @@ const CustomSlider = ({ min, max, step = 1, value, onChange, showDots = false }:
       {/* Track Background */}
       <div className="absolute w-full h-3 bg-[#2D2B3F] rounded-full overflow-hidden">
         {/* Filled Track */}
-        <div className="h-full bg-[#82e0aa] transition-all duration-150" style={{ width: `${percentage}%` }} />
+        <div className="h-full bg-[#82e0aa] transition-all duration-150" style={{ width: \`\${percentage}%\` }} />
       </div>
       
       {/* Dots for discrete sliders */}
       {showDots && (
         <div className="absolute w-full h-3 flex justify-between px-1 items-center pointer-events-none">
           {Array.from({ length: numDots + 1 }).map((_, i) => (
-            <div key={i} className={`w-1 h-1 rounded-full ${i * step <= value - min ? 'bg-transparent' : 'bg-[#82e0aa]/50'}`} />
+            <div key={i} className={\`w-1 h-1 rounded-full \${i * step <= value - min ? 'bg-transparent' : 'bg-[#82e0aa]/50'}\`} />
           ))}
         </div>
       )}
@@ -91,7 +93,7 @@ const CustomSlider = ({ min, max, step = 1, value, onChange, showDots = false }:
       {/* Custom Thumb overlay */}
       <div 
         className="absolute w-2 h-7 bg-[#82e0aa] rounded-md pointer-events-none -translate-x-1/2 transition-all duration-150 shadow-sm"
-        style={{ left: `${percentage}%` }}
+        style={{ left: \`\${percentage}%\` }}
       />
     </div>
   );
@@ -172,7 +174,7 @@ export default function CheckInScreen() {
       const result = await submitCheckIn(submitData);
       setAnalysisResult(result);
     } catch (err: any) {
-      setError(`Submission failed: ${err.message}`);
+      setError(\`Submission failed: \${err.message}\`);
     } finally {
       setLoading(false);
     }
@@ -185,7 +187,7 @@ export default function CheckInScreen() {
   const formatHrsMins = (decimalHrs: number) => {
     const h = Math.floor(decimalHrs);
     const m = Math.round((decimalHrs - h) * 60);
-    return `${h}h ${m}m`;
+    return \`\${h}h \${m}m\`;
   };
 
   if (analysisResult) {
@@ -201,7 +203,7 @@ export default function CheckInScreen() {
           <div className="bg-slate-800/30 rounded-2xl p-6 mb-8 text-left border border-slate-700/50">
             <div className="flex justify-between items-center mb-4">
               <span className="text-slate-400 font-medium">Stress Level</span>
-              <span className={`font-bold ${analysisResult.stress_level === 'Low' ? 'text-emerald-400' : analysisResult.stress_level === 'Moderate' ? 'text-yellow-400' : 'text-rose-400'}`}>
+              <span className={\`font-bold \${analysisResult.stress_level === 'Low' ? 'text-emerald-400' : analysisResult.stress_level === 'Moderate' ? 'text-yellow-400' : 'text-rose-400'}\`}>
                 {analysisResult.stress_level} ({analysisResult.score}/100)
               </span>
             </div>
@@ -246,7 +248,7 @@ export default function CheckInScreen() {
           {steps.map((s, idx) => (
             <div 
               key={s.id} 
-              className={`flex-1 rounded-full ${currentStep >= s.id ? 'bg-[#9BB49D]' : 'bg-[#3A3C45]'}`}
+              className={\`flex-1 rounded-full \${currentStep >= s.id ? 'bg-[#9BB49D]' : 'bg-[#3A3C45]'}\`}
             />
           ))}
         </div>
@@ -299,7 +301,7 @@ export default function CheckInScreen() {
                       <Check 
                         key={q} 
                         size={20} 
-                        className={`cursor-pointer transition-colors ${q <= formData.sleep_quality ? 'text-[#82e0aa]' : 'text-slate-600'}`} 
+                        className={\`cursor-pointer transition-colors \${q <= formData.sleep_quality ? 'text-[#82e0aa]' : 'text-slate-600'}\`} 
                         onClick={() => updateField('sleep_quality', q)}
                       />
                     ))}
@@ -329,7 +331,7 @@ export default function CheckInScreen() {
                     <button
                       key={c}
                       onClick={() => updateField('caffeine_intake', c)}
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center font-medium transition-colors ${formData.caffeine_intake === c ? 'bg-[#3B354D] text-[#E2DCEF]' : 'bg-[#212330] border border-slate-700 text-slate-300'}`}
+                      className={\`w-12 h-12 rounded-xl flex items-center justify-center font-medium transition-colors \${formData.caffeine_intake === c ? 'bg-[#3B354D] text-[#E2DCEF]' : 'bg-[#212330] border border-slate-700 text-slate-300'}\`}
                     >
                       {c}
                     </button>
@@ -371,7 +373,7 @@ export default function CheckInScreen() {
                   <label className="text-sm font-semibold text-white">Social Interactions:</label>
                   <div className="flex gap-1">
                     {[1,2,3,4,5].map(i => (
-                      <div key={i} className={`w-2 h-2 rounded-full ${i <= formData.social_interactions ? 'bg-white' : 'border border-slate-500'}`} />
+                      <div key={i} className={\`w-2 h-2 rounded-full \${i <= formData.social_interactions ? 'bg-white' : 'border border-slate-500'}\`} />
                     ))}
                   </div>
                 </div>
@@ -385,7 +387,7 @@ export default function CheckInScreen() {
                     <button
                       key={opt}
                       onClick={() => updateField('workload', opt)}
-                      className={`py-3 px-4 rounded-xl text-sm font-medium border text-left transition-colors ${formData.workload === opt ? 'bg-[#3B354D] text-[#E2DCEF] border-transparent' : 'bg-transparent text-slate-300 border-slate-700'}`}
+                      className={\`py-3 px-4 rounded-xl text-sm font-medium border text-left transition-colors \${formData.workload === opt ? 'bg-[#3B354D] text-[#E2DCEF] border-transparent' : 'bg-transparent text-slate-300 border-slate-700'}\`}
                     >
                       {opt}
                     </button>
@@ -473,3 +475,7 @@ export default function CheckInScreen() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('c:/Users/venug/AndroidStudioProjects/CortiSense/web/src/app/checkin/page.tsx', code);
+console.log('Successfully applied new Check-in UI!');

@@ -22,6 +22,7 @@ api.interceptors.request.use((config) => {
 export interface CheckInRequest {
   age: number;
   gender: string;
+  mobile_number?: string;
   occupation: string;
   marital_status: string;
   sleep_duration: number;
