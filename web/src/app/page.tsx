@@ -540,11 +540,6 @@ export default function Dashboard() {
             <FactorItem icon={RunIcon} title="Physical Activity" impact={`${factorsData.physical_activity_avg} hrs avg`} percentage={100} colorClass="text-[#82e0aa]" bgClass="bg-[#82e0aa]" />
             <FactorItem icon={Smile} title="Top Mood" impact={factorsData.top_mood || 'Neutral'} percentage={100} colorClass="text-yellow-500" bgClass="bg-[#ffd700]" />
             <FactorItem icon={Briefcase} title="Top Workload" impact={factorsData.top_workload || 'Light'} percentage={100} colorClass="text-rose-500" bgClass="bg-[#ff4b4b]" />
-            
-            {/* Duplicating the last three as seen in the user's mobile app screenshot to match EXACTLY */}
-            <FactorItem icon={RunIcon} title="Physical Activity" impact={`${factorsData.physical_activity_avg} hrs avg`} percentage={100} colorClass="text-[#82e0aa]" bgClass="bg-[#82e0aa]" />
-            <FactorItem icon={Smile} title="Top Mood" impact={factorsData.top_mood || 'Neutral'} percentage={100} colorClass="text-yellow-500" bgClass="bg-[#ffd700]" />
-            <FactorItem icon={Briefcase} title="Top Workload" impact={factorsData.top_workload || 'Light'} percentage={100} colorClass="text-rose-500" bgClass="bg-[#ff4b4b]" />
           </div>
         </div>
 
