@@ -62,6 +62,7 @@ export interface StressCheckInResponse {
   score: number;
   recommendation: string;
   is_escalated: boolean;
+  reasons?: string[];
 }
 
 export interface WeeklyAnalyticsResponse {
