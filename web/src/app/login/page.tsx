@@ -90,7 +90,7 @@ export default function LoginScreen() {
           )}
 
           <div className="flex justify-end pt-2">
-            <button type="button" className="text-sm text-emerald-400 font-semibold hover:text-emerald-300">
+            <button type="button" onClick={() => router.push('/forgot-password')} className="text-sm text-emerald-400 font-semibold hover:text-emerald-300">
               Forgot Password?
             </button>
           </div>

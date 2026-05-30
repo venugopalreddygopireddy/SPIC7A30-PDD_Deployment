@@ -137,6 +137,11 @@ export const submitCheckIn = async (data: CheckInRequest): Promise<AIAnalysisRes
   return response.data;
 };
 
+export const getCheckinDetails = async (id: number): Promise<any> => {
+  const response = await api.get(`/checkin/${id}`);
+  return response.data;
+};
+
 export const login = async (data: any): Promise<{ access_token: string }> => {
   const response = await api.post('/login', data);
   return response.data;
@@ -144,6 +149,21 @@ export const login = async (data: any): Promise<{ access_token: string }> => {
 
 export const register = async (data: any): Promise<any> => {
   const response = await api.post('/register', data);
+  return response.data;
+};
+
+export const forgotPassword = async (data: any): Promise<any> => {
+  const response = await api.post('/forgot-password', data);
+  return response.data;
+};
+
+export const verifyOTP = async (data: { email: string, otp: string }): Promise<any> => {
+  const response = await api.post('/verify-otp', data);
+  return response.data;
+};
+
+export const resetPassword = async (data: { email: string, new_password: string }): Promise<any> => {
+  const response = await api.post('/reset-password', data);
   return response.data;
 };
 
