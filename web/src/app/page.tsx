@@ -28,7 +28,8 @@ import {
   TrendingUp,
   Activity,
   Zap,
-  Target
+  Target,
+  Check
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -119,49 +120,51 @@ export default function Dashboard() {
     
     // Process trends to draw SVG
     const maxScore = 100;
-    const height = 160;
+    const graphHeight = 160;
+    const paddingBottom = 40; 
+    const height = graphHeight + paddingBottom;
     const width = 1000; // arbitrary internal SVG width for viewBox
     const step = trendsData.trends.length > 1 ? width / (trendsData.trends.length - 1) : width;
 
     let pathD = "";
-    const points: {x: number, y: number, score: number}[] = [];
+    const points: {x: number, y: number, score: number, dateStr: string}[] = [];
 
     trendsData.trends.forEach((item, index) => {
       const x = index * step;
-      const y = height - (item.score / maxScore) * height;
-      points.push({ x, y, score: item.score });
+      const y = graphHeight - (item.score / maxScore) * graphHeight;
+      points.push({ x, y, score: item.score, dateStr: item.date });
 
       if (index === 0) {
         pathD += `M ${x} ${y} `;
       } else {
         const prevX = (index - 1) * step;
-        const prevY = height - (trendsData.trends[index - 1].score / maxScore) * height;
+        const prevY = graphHeight - (trendsData.trends[index - 1].score / maxScore) * graphHeight;
         pathD += `C ${prevX + step / 2} ${prevY}, ${x - step / 2} ${y}, ${x} ${y} `;
       }
     });
 
-    const fillPathD = pathD ? `${pathD} L ${width} ${height} L 0 ${height} Z` : "";
+    const fillPathD = pathD ? `${pathD} L ${width} ${graphHeight} L 0 ${graphHeight} Z` : "";
 
     return (
       <div className="space-y-6">
         {/* Wave Graph Card */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-[32px] p-6 shadow-lg shadow-black/20">
+        <div className="bg-[#1e2132] border border-slate-800 rounded-[32px] p-6 shadow-lg">
           <h3 className="text-white font-bold text-lg">Stress Trends</h3>
-          <p className="text-slate-400 text-xs mb-8">Daily average stress level</p>
+          <p className="text-slate-400 text-xs mb-8">Daily Average Stress Score</p>
           
-          <div className="relative w-full h-[160px]">
-            <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full h-full overflow-visible">
+          <div className="relative w-full h-[200px]">
+            <svg viewBox={`-20 -20 ${width + 40} ${height + 20}`} preserveAspectRatio="none" className="w-full h-full overflow-visible">
               <defs>
                 <linearGradient id="waveGradient" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#82e0aa" stopOpacity="0.2" />
+                  <stop offset="100%" stopColor="#82e0aa" stopOpacity="0" />
                 </linearGradient>
               </defs>
 
               {/* Grid Lines */}
               <line x1="0" y1="0" x2={width} y2="0" stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
-              <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
-              <line x1="0" y1={height} x2={width} y2={height} stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
+              <line x1="0" y1={graphHeight / 2} x2={width} y2={graphHeight / 2} stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
+              <line x1="0" y1={graphHeight} x2={width} y2={graphHeight} stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
 
               {/* Area Fill */}
               {fillPathD && (
@@ -170,38 +173,43 @@ export default function Dashboard() {
               
               {/* Stroke Path */}
               {pathD && (
-                <path d={pathD} fill="none" stroke="#10b981" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+                <path d={pathD} fill="none" stroke="#82e0aa" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
               )}
 
-              {/* Points */}
+              {/* Points & Labels */}
               {points.map((p, i) => (
                 <g key={i}>
-                  <circle cx={p.x} cy={p.y} r="16" fill="#0f172a" />
-                  <circle cx={p.x} cy={p.y} r="8" fill="#10b981" />
+                  {/* Point Circle */}
+                  <circle cx={p.x} cy={p.y} r="10" fill="white" stroke="#82e0aa" strokeWidth="4" />
+                  {/* Score Text */}
                   <text 
                     x={p.x} 
-                    y={p.y - 25} 
+                    y={p.y - 20} 
                     fill="white" 
-                    fontSize="24" 
+                    fontSize="22" 
                     fontWeight="bold" 
                     textAnchor="middle"
                   >
                     {p.score}
                   </text>
+                  {/* Day Label */}
+                  <text 
+                    x={p.x} 
+                    y={graphHeight + 35} 
+                    fill="#94a3b8" 
+                    fontSize="18" 
+                    fontWeight="bold" 
+                    textAnchor="middle"
+                  >
+                    {new Date(p.dateStr).toLocaleDateString('en-US', { weekday: 'short' })}
+                  </text>
                 </g>
               ))}
             </svg>
           </div>
-
-          {/* X-Axis Labels */}
-          <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-            {trendsData.trends.map((item, i) => (
-              <span key={i}>{new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' })}</span>
-            ))}
-          </div>
         </div>
 
-        {/* Streak Calendar (moved from Monthly tab) */}
+        {/* Streak Calendar */}
         {monthlyData && (() => {
           const today = new Date();
           const currentYear = today.getFullYear();
@@ -215,6 +223,13 @@ export default function Dashboard() {
           const monthName = firstDayOfMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
           const checkinDates = new Set(Object.keys(monthlyData.calendar_activity));
           
+          const checkedThisMonth = Array.from(checkinDates).filter(d => {
+            return d.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`);
+          }).length;
+          
+          const passedDays = currentDay;
+          const pct = passedDays > 0 ? Math.round((checkedThisMonth / passedDays) * 100) : 0;
+          
           const totalCells = daysInMonth + firstDayOfWeek;
           const cells = [];
           for (let i = 0; i < Math.ceil(totalCells / 7) * 7; i++) {
@@ -222,44 +237,65 @@ export default function Dashboard() {
             if (day > 0 && day <= daysInMonth) {
               const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
               const isCheckedIn = checkinDates.has(dateStr);
-              const isToday = day === currentDay;
               const isFuture = day > currentDay;
               
-              let bg = 'bg-slate-700/50';
-              let border = 'border border-transparent';
-              if (isCheckedIn) bg = 'bg-emerald-500';
-              else if (isFuture) bg = 'bg-transparent';
-              
-              if (isToday) border = 'border-2 border-emerald-500';
+              let bg = 'bg-[#2b2d42]';
+              let textClass = 'text-slate-400';
+              if (isCheckedIn) {
+                bg = 'bg-[#82e0aa]';
+                textClass = 'text-slate-900';
+              } else if (isFuture) {
+                bg = 'bg-transparent';
+                textClass = 'text-slate-600';
+              }
               
               cells.push(
-                <div key={i} className={`aspect-square rounded-[10px] ${bg} ${border} flex items-center justify-center m-[3px]`} />
+                <div key={i} className={`aspect-square rounded-[10px] ${bg} flex flex-col items-center justify-center m-[4px]`}>
+                  {isCheckedIn && <Check size={12} className="text-slate-900 mb-[2px]" strokeWidth={3} />}
+                  <span className={`font-bold text-[10px] ${textClass}`}>{day}</span>
+                </div>
               );
             } else {
-              cells.push(<div key={i} className="aspect-square m-[3px] bg-transparent" />);
+              cells.push(<div key={i} className="aspect-square m-[4px] bg-transparent" />);
             }
           }
 
           return (
-            <div className="bg-slate-900/50 border border-slate-800 rounded-[28px] p-5 shadow-lg shadow-black/20">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-emerald-500 font-extrabold text-lg">{monthName}</h3>
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-                  <span className="text-slate-400 text-xs">Visited</span>
-                  <div className="w-2.5 h-2.5 rounded-full bg-slate-700/50 border border-slate-600"></div>
-                  <span className="text-slate-400 text-xs">Missed</span>
+            <div className="bg-[#1e2132] border border-slate-800 rounded-[28px] p-6 shadow-lg">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-[#82e0aa] font-extrabold text-xl">{monthName}</h3>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#82e0aa]"></div>
+                    <span className="text-slate-300 text-xs font-bold tracking-wide">Visited</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-[#475569]"></div>
+                    <span className="text-slate-300 text-xs font-bold tracking-wide">Missed</span>
+                  </div>
                 </div>
               </div>
               
               <div className="grid grid-cols-7 mb-2">
                 {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                  <div key={day} className="text-center text-slate-400 text-xs font-bold">{day}</div>
+                  <div key={day} className="text-center text-slate-100 text-xs font-extrabold mb-2">{day}</div>
                 ))}
               </div>
               
-              <div className="grid grid-cols-7">
+              <div className="grid grid-cols-7 mb-6">
                 {cells}
+              </div>
+              
+              <div className="h-[1px] w-full bg-slate-700/50 mb-4"></div>
+              
+              <div className="flex justify-between items-center">
+                <div>
+                  <div className="text-slate-200 font-bold text-sm">{checkedThisMonth} / {passedDays} days</div>
+                  <div className="text-slate-400 text-xs font-medium">checked in this month</div>
+                </div>
+                <div className="w-12 h-12 rounded-full bg-[#82e0aa]/10 flex items-center justify-center">
+                  <span className="text-[#82e0aa] font-extrabold text-sm">{pct}%</span>
+                </div>
               </div>
             </div>
           );
