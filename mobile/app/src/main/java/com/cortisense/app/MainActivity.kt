@@ -113,8 +113,6 @@ import androidx.credentials.CreatePasswordRequest
 import androidx.credentials.CreatePasswordResponse
 import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.CreateCredentialException
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import android.app.Activity
 
 @Composable
@@ -1165,7 +1163,17 @@ fun CustomTextField(
             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
             focusedBorderColor = MaterialTheme.colorScheme.primary,
         ),
-        visualTransformation = if (isPassword) androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None
+        visualTransformation = if (isPassword && !passwordVisible) androidx.compose.ui.text.input.PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
+        trailingIcon = if (isPassword) {
+            {
+                androidx.compose.material3.IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    androidx.compose.material3.Icon(
+                        imageVector = if (passwordVisible) androidx.compose.material.icons.Icons.Default.Visibility else androidx.compose.material.icons.Icons.Default.VisibilityOff,
+                        contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                    )
+                }
+            }
+        } else null
     )
 }
 
@@ -1185,22 +1193,7 @@ fun LoginScreen(
     val tealColor = MaterialTheme.colorScheme.primary
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val credentialManager = remember { CredentialManager.create(context) }
 
-    val googleSignInLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val accountName = result.data?.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME)
-            if (accountName != null) {
-                // Successfully selected a Google account
-                email = accountName
-                onLogin(email, "google_oauth_placeholder")
-            } else {
-                errorMessage = context.getString(R.string.auth_error_no_email)
-            }
-        }
-    }
 
     LaunchedEffect(viewModel.errorMessage) {
         if (viewModel.errorMessage != null) {
@@ -1209,21 +1202,7 @@ fun LoginScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
-        try {
-            val getPasswordOption = GetPasswordOption()
-            val request = GetCredentialRequest(listOf(getPasswordOption))
-            val result = credentialManager.getCredential(context as Activity, request)
-            val credential = result.credential
-            if (credential is PasswordCredential) {
-                email = credential.id
-                password = credential.password
-                onLogin(email, password)
-            }
-        } catch (e: Exception) {
-            // Ignored - user might not have saved passwords
-        }
-    }
+
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -1314,10 +1293,7 @@ fun LoginScreen(
                 onClick = {
                     if (email.isNotEmpty() && password.isNotEmpty()) {
                         coroutineScope.launch {
-                            try {
-                                val request = CreatePasswordRequest(email, password)
-                                credentialManager.createCredential(context as Activity, request)
-                            } catch (e: Exception) {}
+
                             onLogin(email, password)
                         }
                     } else {
@@ -1511,22 +1487,7 @@ fun SignupScreen(
     val tealColor = MaterialTheme.colorScheme.primary
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
-    val credentialManager = remember { CredentialManager.create(context) }
 
-    val googleSignInLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val accountName = result.data?.getStringExtra(android.accounts.AccountManager.KEY_ACCOUNT_NAME)
-            if (accountName != null) {
-                // Split email to get a name approximation
-                val parsedName = accountName.substringBefore("@").replace(".", " ").replaceFirstChar { it.uppercase() }
-                onCreateAccount(parsedName, accountName, "google_oauth_placeholder")
-            } else {
-                errorMessage = context.getString(R.string.auth_error_no_email)
-            }
-        }
-    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -1614,10 +1575,7 @@ fun SignupScreen(
                         errorMessage = context.getString(R.string.passwords_do_not_match)
                     } else {
                         coroutineScope.launch {
-                            try {
-                                val request = CreatePasswordRequest(email, password)
-                                credentialManager.createCredential(context as Activity, request)
-                            } catch (e: Exception) {}
+
                             onCreateAccount(name, email, password)
                         }
                     }

@@ -567,7 +567,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 
                 onSuccess()
             } catch(e: Exception) {
-                errorMessage = "Login Failed: ${e.message}"
+                if (e.message?.contains("401") == true || (e is retrofit2.HttpException && e.code() == 401)) {
+                    errorMessage = "Wrong password or wrong email ID.\nTry again"
+                } else {
+                    errorMessage = "Login Failed: ${e.message}"
+                }
             } finally {
                 isLoading = false
             }
