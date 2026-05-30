@@ -1,4 +1,6 @@
-"use client";
+const fs = require('fs');
+
+const code = `"use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, User, Moon, Zap, Briefcase, Activity as RunIcon, Check, BrainCircuit, CloudLightning, Heart, AlertTriangle, Activity } from 'lucide-react';
@@ -21,7 +23,7 @@ const FloatingInput = ({ label, value, onChange, type = "text", readOnly = false
       value={value} 
       onChange={e => onChange(e.target.value)} 
       readOnly={readOnly}
-      className={`peer w-full bg-transparent border ${readOnly ? 'border-slate-800 text-slate-500' : 'border-slate-700 text-white'} rounded-lg px-4 py-3 focus:border-slate-500 outline-none transition-colors`} 
+      className={\`peer w-full bg-transparent border \${readOnly ? 'border-slate-800 text-slate-500' : 'border-slate-700 text-white'} rounded-lg px-4 py-3 focus:border-slate-500 outline-none transition-colors\`} 
     />
     <label className="absolute left-3 -top-2.5 bg-[#1C1E2B] px-1 text-xs text-slate-400 font-medium">
       {label}
@@ -47,7 +49,7 @@ const ChipGroup = ({ options, selected, onChange, multiple = false }: any) => {
         <button
           key={opt}
           onClick={() => toggle(opt)}
-          className={`px-5 py-2.5 rounded-xl text-sm font-medium border transition-all ${isSelected(opt) ? 'bg-[#3B354D] text-[#E2DCEF] border-transparent' : 'bg-transparent text-slate-300 border-slate-700'}`}
+          className={\`px-5 py-2.5 rounded-xl text-sm font-medium border transition-all \${isSelected(opt) ? 'bg-[#3B354D] text-[#E2DCEF] border-transparent' : 'bg-transparent text-slate-300 border-slate-700'}\`}
         >
           {opt}
         </button>
@@ -63,12 +65,12 @@ const CustomSlider = ({ min, max, step = 1, value, onChange, showDots = false }:
   return (
     <div className="relative w-full h-8 flex items-center mt-2 group">
       <div className="absolute w-full h-3 bg-[#2D2B3F] rounded-full overflow-hidden">
-        <div className="h-full bg-[#82e0aa] transition-all duration-150" style={{ width: `${percentage}%` }} />
+        <div className="h-full bg-[#82e0aa] transition-all duration-150" style={{ width: \`\${percentage}%\` }} />
       </div>
       {showDots && (
         <div className="absolute w-full h-3 flex justify-between px-1 items-center pointer-events-none">
           {Array.from({ length: numDots + 1 }).map((_, i) => (
-            <div key={i} className={`w-1 h-1 rounded-full ${i * step <= value - min ? 'bg-transparent' : 'bg-[#82e0aa]/50'}`} />
+            <div key={i} className={\`w-1 h-1 rounded-full \${i * step <= value - min ? 'bg-transparent' : 'bg-[#82e0aa]/50'}\`} />
           ))}
         </div>
       )}
@@ -83,7 +85,7 @@ const CustomSlider = ({ min, max, step = 1, value, onChange, showDots = false }:
       />
       <div 
         className="absolute w-2 h-7 bg-[#82e0aa] rounded-md pointer-events-none -translate-x-1/2 transition-all duration-150 shadow-sm"
-        style={{ left: `${percentage}%` }}
+        style={{ left: \`\${percentage}%\` }}
       />
     </div>
   );
@@ -184,7 +186,7 @@ export default function CheckInScreen() {
 
     } catch (err: any) {
       setIsAnalyzing(false);
-      setError(`Submission failed: ${err.response?.data?.detail || err.message || 'Unknown error'}`);
+      setError(\`Submission failed: \${err.response?.data?.detail || err.message || 'Unknown error'}\`);
       console.error(err);
     } finally {
       setLoading(false);
@@ -198,7 +200,7 @@ export default function CheckInScreen() {
   const formatHrsMins = (decimalHrs: number) => {
     const h = Math.floor(decimalHrs);
     const m = Math.round((decimalHrs - h) * 60);
-    return `${h}h ${m}m`;
+    return \`\${h}h \${m}m\`;
   };
 
   if (isAnalyzing) {
@@ -213,30 +215,30 @@ export default function CheckInScreen() {
         <div className="w-full max-w-sm space-y-5 mb-16">
           <div className="flex items-center gap-4">
              {analyzeStep >= 0 ? <Loader2 className="animate-spin text-[#82e0aa]" size={20} /> : <div className="w-5 h-5"/>}
-             <span className={`text-sm font-medium ${analyzeStep >= 0 ? 'text-white' : 'text-transparent'}`}>Processing physiological markers...</span>
+             <span className={\`text-sm font-medium \${analyzeStep >= 0 ? 'text-white' : 'text-transparent'}\`}>Processing physiological markers...</span>
           </div>
           <div className="flex items-center gap-4">
              {analyzeStep >= 1 ? <div className="w-2 h-2 rounded-full bg-[#82e0aa] ml-1.5" /> : <div className="w-2 h-2 ml-1.5"/>}
-             <span className={`text-sm ${analyzeStep >= 1 ? 'text-slate-200' : 'text-transparent'}`}>Analyzing heart rate variability</span>
+             <span className={\`text-sm \${analyzeStep >= 1 ? 'text-slate-200' : 'text-transparent'}\`}>Analyzing heart rate variability</span>
           </div>
           <div className="flex items-center gap-4">
              {analyzeStep >= 2 ? <div className="w-2 h-2 rounded-full bg-[#82e0aa] ml-1.5" /> : <div className="w-2 h-2 ml-1.5"/>}
-             <span className={`text-sm ${analyzeStep >= 2 ? 'text-slate-200' : 'text-transparent'}`}>Evaluating sleep patterns</span>
+             <span className={\`text-sm \${analyzeStep >= 2 ? 'text-slate-200' : 'text-transparent'}\`}>Evaluating sleep patterns</span>
           </div>
           <div className="flex items-center gap-4">
              {analyzeStep >= 3 ? <div className="w-2 h-2 rounded-full bg-[#82e0aa] ml-1.5" /> : <div className="w-2 h-2 ml-1.5"/>}
-             <span className={`text-sm ${analyzeStep >= 3 ? 'text-slate-200' : 'text-transparent'}`}>Computing stress correlations</span>
+             <span className={\`text-sm \${analyzeStep >= 3 ? 'text-slate-200' : 'text-transparent'}\`}>Computing stress correlations</span>
           </div>
           <div className="flex items-center gap-4">
              {analyzeStep >= 4 ? <div className="w-2 h-2 rounded-full bg-[#82e0aa] ml-1.5" /> : <div className="w-2 h-2 ml-1.5"/>}
-             <span className={`text-sm ${analyzeStep >= 4 ? 'text-slate-200' : 'text-transparent'}`}>Generating insights</span>
+             <span className={\`text-sm \${analyzeStep >= 4 ? 'text-slate-200' : 'text-transparent'}\`}>Generating insights</span>
           </div>
         </div>
 
         <div className="absolute bottom-12 w-full max-w-sm flex gap-2 px-6">
-           <div className={`h-1.5 flex-1 rounded-full ${analyzeStep >= 0 ? 'bg-[#82e0aa]' : 'bg-[#3E2E5B]'}`} />
-           <div className={`h-1.5 flex-1 rounded-full ${analyzeStep >= 2 ? 'bg-[#82e0aa]' : 'bg-[#3E2E5B]'}`} />
-           <div className={`h-1.5 flex-1 rounded-full ${analyzeStep >= 4 ? 'bg-[#82e0aa]' : 'bg-[#3E2E5B]'}`} />
+           <div className={\`h-1.5 flex-1 rounded-full \${analyzeStep >= 0 ? 'bg-[#82e0aa]' : 'bg-[#3E2E5B]'}\`} />
+           <div className={\`h-1.5 flex-1 rounded-full \${analyzeStep >= 2 ? 'bg-[#82e0aa]' : 'bg-[#3E2E5B]'}\`} />
+           <div className={\`h-1.5 flex-1 rounded-full \${analyzeStep >= 4 ? 'bg-[#82e0aa]' : 'bg-[#3E2E5B]'}\`} />
            <div className="h-1.5 flex-1 rounded-full bg-[#3E2E5B]" />
         </div>
       </div>
@@ -250,7 +252,7 @@ export default function CheckInScreen() {
     return (
       <div className="min-h-screen bg-[#11131C] text-slate-200 font-sans flex flex-col p-6">
         <div className="flex justify-start mb-8 mt-4">
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm ${isHigh ? 'bg-[#3B2A2D] text-[#E0665A]' : 'bg-[#2A3B30] text-[#82e0aa]'}`}>
+          <div className={\`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm \${isHigh ? 'bg-[#3B2A2D] text-[#E0665A]' : 'bg-[#2A3B30] text-[#82e0aa]'}\`}>
              {isHigh ? <CloudLightning size={18} /> : <CheckCircle2 size={18} />}
              {analysisResult.stress_level} Stress
           </div>
@@ -323,7 +325,7 @@ export default function CheckInScreen() {
            <button onClick={() => window.location.reload()} className="flex-1 py-4 rounded-2xl border border-slate-700 text-white font-bold text-center hover:bg-slate-800 transition-colors">
               Recheck
            </button>
-           <button onClick={() => window.location.href = '/'} className={`flex-1 py-4 rounded-2xl text-white font-bold text-center transition-colors ${isHigh ? 'bg-[#F07349] hover:bg-[#E0665A]' : 'bg-[#82e0aa] hover:bg-emerald-400 text-black'}`}>
+           <button onClick={() => window.location.href = '/'} className={\`flex-1 py-4 rounded-2xl text-white font-bold text-center transition-colors \${isHigh ? 'bg-[#F07349] hover:bg-[#E0665A]' : 'bg-[#82e0aa] hover:bg-emerald-400 text-black'}\`}>
               View Insights
            </button>
         </div>
@@ -347,7 +349,7 @@ export default function CheckInScreen() {
           {steps.map((s, idx) => (
             <div 
               key={s.id} 
-              className={`flex-1 rounded-full ${currentStep >= s.id ? 'bg-[#9BB49D]' : 'bg-[#3A3C45]'}`}
+              className={\`flex-1 rounded-full \${currentStep >= s.id ? 'bg-[#9BB49D]' : 'bg-[#3A3C45]'}\`}
             />
           ))}
         </div>
@@ -402,7 +404,7 @@ export default function CheckInScreen() {
                       <Check 
                         key={q} 
                         size={20} 
-                        className={`cursor-pointer transition-colors ${q <= formData.sleep_quality ? 'text-[#82e0aa]' : 'text-slate-600'}`} 
+                        className={\`cursor-pointer transition-colors \${q <= formData.sleep_quality ? 'text-[#82e0aa]' : 'text-slate-600'}\`} 
                         onClick={() => updateField('sleep_quality', q)}
                       />
                     ))}
@@ -429,7 +431,7 @@ export default function CheckInScreen() {
                     <button
                       key={c}
                       onClick={() => updateField('caffeine_intake', c)}
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center font-medium transition-colors ${formData.caffeine_intake === c ? 'bg-[#3B354D] text-[#E2DCEF]' : 'bg-[#212330] border border-slate-700 text-slate-300'}`}
+                      className={\`w-12 h-12 rounded-xl flex items-center justify-center font-medium transition-colors \${formData.caffeine_intake === c ? 'bg-[#3B354D] text-[#E2DCEF]' : 'bg-[#212330] border border-slate-700 text-slate-300'}\`}
                     >
                       {c}
                     </button>
@@ -462,7 +464,7 @@ export default function CheckInScreen() {
                   <label className="text-sm font-semibold text-white">Social Interactions:</label>
                   <div className="flex gap-1">
                     {[1,2,3,4,5].map(i => (
-                      <div key={i} className={`w-2 h-2 rounded-full ${i <= formData.social_interactions ? 'bg-white' : 'border border-slate-500'}`} />
+                      <div key={i} className={\`w-2 h-2 rounded-full \${i <= formData.social_interactions ? 'bg-white' : 'border border-slate-500'}\`} />
                     ))}
                   </div>
                 </div>
@@ -475,7 +477,7 @@ export default function CheckInScreen() {
                     <button
                       key={opt}
                       onClick={() => updateField('workload', opt)}
-                      className={`py-3 px-4 rounded-xl text-sm font-medium border text-left transition-colors ${formData.workload === opt ? 'bg-[#3B354D] text-[#E2DCEF] border-transparent' : 'bg-transparent text-slate-300 border-slate-700'}`}
+                      className={\`py-3 px-4 rounded-xl text-sm font-medium border text-left transition-colors \${formData.workload === opt ? 'bg-[#3B354D] text-[#E2DCEF] border-transparent' : 'bg-transparent text-slate-300 border-slate-700'}\`}
                     >
                       {opt}
                     </button>
@@ -545,3 +547,7 @@ export default function CheckInScreen() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('c:/Users/venug/AndroidStudioProjects/CortiSense/web/src/app/checkin/page.tsx', code);
+console.log('Successfully applied new Analyzing & Result screens!');
