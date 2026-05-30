@@ -1,17 +1,22 @@
 import axios from 'axios';
 
-let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-// Remove trailing slash if present to avoid double-slashes in requests
-if (API_BASE_URL.endsWith('/')) {
-  API_BASE_URL = API_BASE_URL.slice(0, -1);
-}
+let API_BASE_URL = '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('jwtToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
 });
 
 export interface CheckInRequest {
@@ -59,13 +64,84 @@ export interface StressCheckInResponse {
   is_escalated: boolean;
 }
 
+export interface WeeklyAnalyticsResponse {
+  avg_score: number;
+  highest_score: number;
+  lowest_score: number;
+  total_checkins: number;
+  distribution: {
+    low: number;
+    moderate: number;
+    high: number;
+  };
+}
+
+export interface MonthlyAnalyticsResponse {
+  avg_score: number;
+  total_checkins: number;
+  distribution: {
+    low: number;
+    moderate: number;
+    high: number;
+  };
+  calendar_activity: Record<string, number>;
+}
+
+export interface TrendsResponse {
+  trends: {
+    date: string;
+    score: number;
+    level: string;
+  }[];
+}
+
+export interface FactorsResponse {
+  sleep_avg: number;
+  screen_time_avg: number;
+  caffeine_avg: number;
+  physical_activity_avg: number;
+  top_mood: string;
+  top_workload: string;
+  top_exercise: string;
+}
+
 export const getHistory = async (): Promise<StressCheckInResponse[]> => {
   const response = await api.get('/history');
   return response.data;
 };
 
+export const getWeeklyAnalytics = async (): Promise<WeeklyAnalyticsResponse> => {
+  const response = await api.get('/analytics/weekly');
+  return response.data;
+};
+
+export const getMonthlyAnalytics = async (): Promise<MonthlyAnalyticsResponse> => {
+  const response = await api.get('/analytics/monthly');
+  return response.data;
+};
+
+export const getTrendsAnalytics = async (): Promise<TrendsResponse> => {
+  const response = await api.get('/analytics/trends');
+  return response.data;
+};
+
+export const getFactorsAnalytics = async (): Promise<FactorsResponse> => {
+  const response = await api.get('/analytics/factors');
+  return response.data;
+};
+
 export const submitCheckIn = async (data: CheckInRequest): Promise<AIAnalysisResult> => {
   const response = await api.post('/checkin', data);
+  return response.data;
+};
+
+export const login = async (data: any): Promise<{ access_token: string }> => {
+  const response = await api.post('/login', data);
+  return response.data;
+};
+
+export const register = async (data: any): Promise<any> => {
+  const response = await api.post('/register', data);
   return response.data;
 };
 

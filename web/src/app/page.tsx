@@ -1,42 +1,90 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import api, { StressCheckInResponse, getHistory } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import api, { 
+  StressCheckInResponse, 
+  WeeklyAnalyticsResponse, 
+  MonthlyAnalyticsResponse, 
+  TrendsResponse, 
+  FactorsResponse,
+  getHistory,
+  getWeeklyAnalytics,
+  getMonthlyAnalytics,
+  getTrendsAnalytics,
+  getFactorsAnalytics
+} from '@/lib/api';
+import axios from 'axios';
 import { 
-  Activity, 
-  Brain, 
-  Heart, 
-  Wind, 
-  History, 
-  User, 
-  Settings, 
   Bell, 
-  Search,
-  ArrowUpRight,
-  ShieldCheck,
-  TrendingDown,
+  Home, 
+  BarChart3, 
+  PlusCircle, 
+  User, 
+  Loader2,
   Calendar,
-  LucideIcon,
-  Loader2
+  Clock,
+  Share2,
+  TrendingUp,
+  Activity,
+  Zap,
+  Target
 } from 'lucide-react';
 
-// --- Dashboard Layout Component ---
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('home');
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState('Home');
   const [history, setHistory] = useState<StressCheckInResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string>('User');
+  const [showAlertScore, setShowAlertScore] = useState<number | null>(null);
+
+  // Analytics States
+  const [analyticsTab, setAnalyticsTab] = useState('Trends');
+  const [weeklyData, setWeeklyData] = useState<WeeklyAnalyticsResponse | null>(null);
+  const [monthlyData, setMonthlyData] = useState<MonthlyAnalyticsResponse | null>(null);
+  const [trendsData, setTrendsData] = useState<TrendsResponse | null>(null);
+  const [factorsData, setFactorsData] = useState<FactorsResponse | null>(null);
 
   useEffect(() => {
     async function fetchData() {
+      if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('jwtToken');
+        if (!token) {
+          window.location.href = '/welcome';
+          return;
+        }
+        const email = localStorage.getItem('userEmail');
+        if (email) {
+          const name = email.split('@')[0];
+          setUserEmail(name.charAt(0).toUpperCase() + name.slice(1));
+        }
+      }
+
       try {
         setLoading(true);
-        const data = await getHistory();
-        setHistory(data);
+        const [hist, weekly, monthly, trends, factors] = await Promise.all([
+          getHistory().catch(() => []),
+          getWeeklyAnalytics().catch(() => null),
+          getMonthlyAnalytics().catch(() => null),
+          getTrendsAnalytics().catch(() => null),
+          getFactorsAnalytics().catch(() => null)
+        ]);
+        setHistory(hist);
+        if (weekly) setWeeklyData(weekly);
+        if (monthly) setMonthlyData(monthly);
+        if (trends) setTrendsData(trends);
+        if (factors) setFactorsData(factors);
         setError(null);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to fetch history:", err);
-        setError("Could not connect to backend");
+        if (axios.isAxiosError(err) && err.response?.status === 401) {
+          localStorage.removeItem('jwtToken');
+          window.location.href = '/login';
+        } else {
+          setError("Could not connect to backend");
+        }
       } finally {
         setLoading(false);
       }
@@ -46,7 +94,14 @@ export default function Dashboard() {
 
   const latestCheckIn = history[0];
   const stressScore = latestCheckIn?.score ?? 0;
-  const stressLevel = latestCheckIn?.stress_level ?? 'No Data';
+  
+  // Dynamic stats calculation based on real data
+  const todayCheckinsCount = history.filter(item => {
+    const today = new Date().toISOString().split('T')[0];
+    return item.timestamp.startsWith(today);
+  }).length;
+
+  const greeting = new Date().getHours() < 12 ? 'Good Morning' : 'Good Evening';
 
   if (loading) {
     return (
@@ -56,240 +111,506 @@ export default function Dashboard() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#050810] text-slate-200 font-sans flex">
-      {/* --- Sidebar --- */}
-      <aside className="w-64 border-r border-slate-800/50 bg-[#080B16] hidden lg:flex flex-col">
-        <div className="p-8">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-            CortiSense
-          </h1>
-          <p className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-semibold">AI Wellness</p>
-        </div>
-
-        <nav className="flex-1 px-4 space-y-2">
-          <NavItem Icon={Activity} label="Dashboard" active={activeTab === 'home'} onClick={() => setActiveTab('home')} />
-          <NavItem Icon={Brain} label="AI Chat" active={activeTab === 'chat'} onClick={() => setActiveTab('chat')} />
-          <NavItem Icon={History} label="History" active={activeTab === 'history'} onClick={() => setActiveTab('history')} />
-          <NavItem Icon={Wind} label="Exercises" active={activeTab === 'exercises'} onClick={() => setActiveTab('exercises')} />
-        </nav>
-
-        <div className="p-6 border-t border-slate-800/50 space-y-4">
-          <NavItem Icon={Settings} label="Settings" />
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/30">
-            <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <User size={20} />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Venugopal</p>
-              <p className="text-[10px] text-slate-500">Premium Member</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* --- Main Content --- */}
-      <main className="flex-1 overflow-y-auto">
-        {/* --- Header --- */}
-        <header className="h-20 border-b border-slate-800/50 flex items-center justify-between px-8 sticky top-0 bg-[#050810]/80 backdrop-blur-md z-10">
-          <div className="relative w-96">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search analytics, history..." 
-              className="w-full bg-slate-900/50 border border-slate-800 rounded-full py-2 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 transition-all"
-            />
-          </div>
+  // ==========================================
+  // Analytics Sub-tab Renderers
+  // ==========================================
+  const renderTrends = () => {
+    if (!trendsData) return <div className="text-center py-10 text-slate-500">Loading Trends...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6">
+          <h3 className="text-white font-bold text-lg">Stress Trends</h3>
+          <p className="text-slate-400 text-xs mb-8">Daily average stress level over the last 7 days</p>
           
-          <div className="flex items-center gap-4">
-            <button className="p-2 text-slate-400 hover:text-white transition-colors relative">
-              <Bell size={20} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full border-2 border-[#050810]"></span>
-            </button>
-            <button className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2">
-              New Check-in
-            </button>
-          </div>
-        </header>
+          {/* Simple CSS-based wave graph substitute */}
+          <div className="h-40 flex items-end justify-between gap-2 relative">
+            {trendsData.trends.map((item, i) => {
+              const height = `${(item.score / 100) * 100}%`;
+              let color = 'bg-emerald-500';
+              if (item.level === 'Critical') color = 'bg-rose-500';
+              else if (item.level === 'High') color = 'bg-orange-500';
+              else if (item.level === 'Moderate') color = 'bg-yellow-500';
 
-        <div className="p-8 max-w-7xl mx-auto space-y-8">
-          {/* --- Hero Section --- */}
-          <div className="flex flex-col md:flex-row gap-6">
-            {/* Stress Card */}
-            <div className="flex-1 bg-gradient-to-br from-slate-900 to-[#080B16] border border-slate-800 p-8 rounded-3xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-8">
-                <TrendingDown className="text-emerald-400 opacity-50 group-hover:scale-110 transition-transform" size={120} strokeWidth={1} />
+              return (
+                <div key={i} className="flex flex-col items-center flex-1 group">
+                  <div className="w-full flex justify-center h-full items-end relative pb-2">
+                    <div 
+                      className={`w-full max-w-[20px] rounded-t-lg ${color} opacity-80 group-hover:opacity-100 transition-all`} 
+                      style={{ height }}
+                    ></div>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 bg-slate-800 text-white text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity">
+                      {item.score}
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">
+                    {new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderWeekly = () => {
+    if (!weeklyData) return <div className="text-center py-10 text-slate-500">Loading Weekly Data...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex flex-col items-center justify-center">
+            <span className="text-4xl font-extrabold text-white mb-2">{weeklyData.avg_score}</span>
+            <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Avg Score</span>
+          </div>
+          <div className="grid grid-rows-2 gap-4">
+            <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-4 flex justify-between items-center">
+              <div>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Highest</p>
+                <p className="text-white font-bold text-xl">{weeklyData.highest_score}</p>
               </div>
-              <div className="relative z-10">
-                <p className="text-slate-400 font-medium">Current Stress Score</p>
-                <div className="flex items-baseline gap-2 mt-2">
-                  <h2 className="text-7xl font-bold text-white tracking-tighter">{stressScore}</h2>
-                  <span className="text-slate-500 text-xl">/ 100</span>
-                </div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold mt-4 border border-emerald-500/20">
-                  <ShieldCheck size={14} /> Stress is improving
-                </div>
+              <TrendingUp className="text-rose-500" size={20} />
+            </div>
+            <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-4 flex justify-between items-center">
+              <div>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Lowest</p>
+                <p className="text-white font-bold text-xl">{weeklyData.lowest_score}</p>
+              </div>
+              <TrendingUp className="text-emerald-500 rotate-180" size={20} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6">
+          <h3 className="text-white font-bold mb-4">Distribution</h3>
+          <div className="h-6 w-full flex rounded-full overflow-hidden mb-4">
+            <div className="bg-emerald-500" style={{ width: `${(weeklyData.distribution.low / weeklyData.total_checkins) * 100}%` }}></div>
+            <div className="bg-yellow-500" style={{ width: `${(weeklyData.distribution.moderate / weeklyData.total_checkins) * 100}%` }}></div>
+            <div className="bg-rose-500" style={{ width: `${(weeklyData.distribution.high / weeklyData.total_checkins) * 100}%` }}></div>
+          </div>
+          <div className="flex justify-between text-xs font-bold text-slate-400">
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Low ({weeklyData.distribution.low})</div>
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-yellow-500"></div> Mod ({weeklyData.distribution.moderate})</div>
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-rose-500"></div> High ({weeklyData.distribution.high})</div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMonthly = () => {
+    if (!monthlyData) return <div className="text-center py-10 text-slate-500">Loading Monthly Data...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="flex gap-4">
+          <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex flex-col justify-center">
+            <span className="text-3xl font-extrabold text-white mb-1">{monthlyData.avg_score}</span>
+            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Monthly Avg</span>
+          </div>
+          <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex flex-col justify-center">
+            <span className="text-3xl font-extrabold text-white mb-1">{monthlyData.total_checkins}</span>
+            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Total Check-ins</span>
+          </div>
+        </div>
+        
+        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6">
+          <h3 className="text-white font-bold mb-4">Calendar Activity</h3>
+          <div className="grid grid-cols-7 gap-2">
+            {Object.keys(monthlyData.calendar_activity).slice(0, 28).map((dateStr, i) => {
+              const score = monthlyData.calendar_activity[dateStr];
+              let bg = 'bg-slate-800';
+              if (score > 80) bg = 'bg-rose-500';
+              else if (score > 60) bg = 'bg-orange-500';
+              else if (score > 40) bg = 'bg-yellow-500';
+              else if (score > 0) bg = 'bg-emerald-500';
+              
+              return <div key={i} className={`aspect-square rounded-md ${bg} opacity-80`}></div>;
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFactors = () => {
+    if (!factorsData) return <div className="text-center py-10 text-slate-500">Loading Factors...</div>;
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-5 flex flex-col">
+            <Clock size={20} className="text-cyan-400 mb-3" />
+            <span className="text-2xl font-bold text-white mb-1">{factorsData.sleep_avg}h</span>
+            <span className="text-slate-400 text-[10px] font-bold uppercase">Avg Sleep</span>
+          </div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-5 flex flex-col">
+            <Activity size={20} className="text-purple-400 mb-3" />
+            <span className="text-2xl font-bold text-white mb-1">{factorsData.screen_time_avg}h</span>
+            <span className="text-slate-400 text-[10px] font-bold uppercase">Screen Time</span>
+          </div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-5 flex flex-col">
+            <Zap size={20} className="text-yellow-400 mb-3" />
+            <span className="text-2xl font-bold text-white mb-1">{factorsData.caffeine_avg}c</span>
+            <span className="text-slate-400 text-[10px] font-bold uppercase">Caffeine</span>
+          </div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-5 flex flex-col">
+            <Target size={20} className="text-emerald-400 mb-3" />
+            <span className="text-2xl font-bold text-white mb-1">{factorsData.physical_activity_avg}m</span>
+            <span className="text-slate-400 text-[10px] font-bold uppercase">Activity</span>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6">
+          <h3 className="text-white font-bold mb-4">Top Influencers</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+              <span className="text-slate-400 font-medium">Frequent Mood</span>
+              <span className="text-white font-bold bg-slate-800 px-3 py-1 rounded-full text-sm">{factorsData.top_mood}</span>
+            </div>
+            <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+              <span className="text-slate-400 font-medium">Main Workload</span>
+              <span className="text-white font-bold bg-slate-800 px-3 py-1 rounded-full text-sm">{factorsData.top_workload}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-slate-400 font-medium">Top Exercise</span>
+              <span className="text-white font-bold bg-slate-800 px-3 py-1 rounded-full text-sm">{factorsData.top_exercise}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderHistory = () => {
+    return (
+      <div className="space-y-4">
+        {history.length > 0 ? (
+          history.map((item) => (
+            <div key={item.id} className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex justify-between items-center hover:bg-slate-800/50 transition-colors cursor-pointer">
+              <div>
+                <p className="text-white font-bold">{new Date(item.timestamp).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                <p className="text-xs text-slate-400 mt-1">{new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-extrabold text-white">{item.score}</p>
+                <p className={`text-[10px] font-bold uppercase mt-1 ${item.score >= 80 ? 'text-rose-500' : item.score >= 60 ? 'text-orange-500' : item.score >= 40 ? 'text-yellow-500' : 'text-emerald-500'}`}>
+                  {item.stress_level}
+                </p>
               </div>
             </div>
+          ))
+        ) : (
+          <p className="text-slate-500 text-center py-10">No history available yet.</p>
+        )}
+      </div>
+    );
+  };
 
-            {/* AI Insights Card */}
-            <div className="w-full md:w-96 bg-[#0E1528] border border-blue-500/20 p-8 rounded-3xl shadow-2xl shadow-blue-500/10 relative">
-              <div className="flex items-center gap-2 text-blue-400 mb-4">
-                <Brain size={20} />
-                <span className="text-xs font-bold uppercase tracking-widest">AI Wellness Assistant</span>
+  // Define tab content rendering
+  const renderContent = () => {
+    if (activeTab === 'Home') {
+      return (
+        <div className="flex-1 overflow-y-auto px-6 py-12 space-y-8">
+          
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-emerald-500 rounded-full flex items-center justify-center text-[#050810] font-bold text-xl shadow-lg shadow-emerald-500/20">
+                C
               </div>
-              <p className="text-slate-300 leading-relaxed italic font-serif text-lg">
-                &quot;I noticed your stress levels are improving compared to your previous check-ins. Great job on staying mindful!&quot;
-              </p>
-              <button className="mt-6 text-sm text-blue-400 font-semibold hover:text-blue-300 flex items-center gap-1 group">
-                Ask for advice <ArrowUpRight size={16} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              <div>
+                <p className="text-slate-400 text-sm font-medium">{greeting}</p>
+                <h1 className="text-white text-2xl font-bold truncate max-w-[150px]">{userEmail}</h1>
+              </div>
+            </div>
+            
+            <button className="relative w-12 h-12 rounded-xl bg-slate-800/50 flex items-center justify-center text-emerald-400 hover:bg-slate-800 transition-colors">
+              <Bell size={24} />
+              {todayCheckinsCount === 0 && (
+                <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-[#050810]"></div>
+              )}
+            </button>
+          </div>
+
+          {/* Stress Orb */}
+          <div className="flex flex-col items-center justify-center py-8">
+            <div 
+              onClick={() => setShowAlertScore(stressScore)}
+              className="relative w-64 h-64 rounded-full flex items-center justify-center shadow-2xl shadow-emerald-500/10 border-4 border-emerald-500/20 overflow-hidden cursor-pointer hover:scale-105 transition-transform"
+            >
+              <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 animate-pulse rounded-full"></div>
+              <div className="relative z-10 flex flex-col items-center">
+                <span className="text-7xl font-bold text-white tracking-tighter">{stressScore}</span>
+                <span className="text-emerald-400 font-semibold tracking-widest uppercase text-sm mt-1">Score</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Action Button */}
+          <div className="pt-4 pb-2 w-full max-w-sm mx-auto">
+            <button 
+              onClick={() => router.push('/checkin')}
+              className="w-full h-16 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg rounded-[24px] shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
+            >
+              Daily Check-in
+            </button>
+          </div>
+
+          {/* Today's Stats (Mini) */}
+          <div className="grid grid-cols-3 gap-3 w-full max-w-sm mx-auto">
+            <div className="bg-slate-800/40 rounded-[20px] p-4 flex flex-col items-start justify-center">
+              <div className="text-emerald-500 mb-2">
+                <Calendar size={18} />
+              </div>
+              <p className="text-white font-extrabold text-lg">{todayCheckinsCount}</p>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">Check-ins</p>
+            </div>
+            
+            <div className="bg-slate-800/40 rounded-[20px] p-4 flex flex-col items-start justify-center">
+              <div className="text-emerald-500 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+              </div>
+              <p className="text-white font-extrabold text-lg">{history.length > 0 ? 1 : 0}</p>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">Streak</p>
+            </div>
+            
+            <div className="bg-slate-800/40 rounded-[20px] p-4 flex flex-col items-start justify-center">
+              <div className="text-emerald-500 mb-2">
+                <Clock size={18} />
+              </div>
+              <p className="text-white font-extrabold text-lg">{history.length > 0 ? history[0].score : '0'}h</p>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">Sleep</p>
+            </div>
+          </div>
+
+          {/* Add extra space at the bottom so content isn't hidden by nav bar */}
+          <div className="h-10"></div>
+        </div>
+      );
+    } else if (activeTab === 'Analytics') {
+      return (
+        <div className="flex-1 overflow-y-auto bg-slate-900/10">
+          <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">Insights</h2>
+              <button className="w-10 h-10 flex items-center justify-center bg-slate-800/50 rounded-xl">
+                <Share2 size={18} className="text-slate-200" />
+              </button>
+            </div>
+            
+            {/* Elegant Sub-tabs */}
+            <div className="flex gap-6 overflow-x-auto pb-4 mb-6 border-b border-slate-800/50 scrollbar-hide">
+              {['Trends', 'Weekly', 'Monthly', 'Factors', 'History'].map((tab) => (
+                <button 
+                  key={tab}
+                  onClick={() => setAnalyticsTab(tab)}
+                  className={`text-base font-bold whitespace-nowrap pb-2 border-b-[3px] transition-all ${analyticsTab === tab ? 'border-emerald-500 text-white' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4">
+              {analyticsTab === 'Trends' && renderTrends()}
+              {analyticsTab === 'Weekly' && renderWeekly()}
+              {analyticsTab === 'Monthly' && renderMonthly()}
+              {analyticsTab === 'Factors' && renderFactors()}
+              {analyticsTab === 'History' && renderHistory()}
+            </div>
+          </div>
+        </div>
+      );
+    } else if (activeTab === 'Profile') {
+      return (
+        <div className="flex-1 overflow-y-auto px-6 py-12 flex flex-col">
+          <div className="flex flex-col items-center mb-10">
+            <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center text-[#050810] font-bold text-4xl mb-4 shadow-lg shadow-emerald-500/20">
+              {userEmail.charAt(0)}
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-1">{userEmail}</h2>
+            <p className="text-slate-400 text-sm">{localStorage.getItem('userEmail')}</p>
+          </div>
+
+          <div className="space-y-3">
+            <button className="w-full bg-slate-900/50 border border-slate-800 p-5 rounded-2xl text-left text-white font-medium hover:bg-slate-800 transition-colors">Achievements</button>
+            <button className="w-full bg-slate-900/50 border border-slate-800 p-5 rounded-2xl text-left text-white font-medium hover:bg-slate-800 transition-colors">Streak Tracker</button>
+            <button className="w-full bg-slate-900/50 border border-slate-800 p-5 rounded-2xl text-left text-white font-medium hover:bg-slate-800 transition-colors">Clinical History</button>
+            
+            <div className="pt-4">
+              <button 
+                onClick={() => {
+                  localStorage.removeItem('jwtToken');
+                  localStorage.removeItem('userEmail');
+                  router.push('/welcome');
+                }}
+                className="w-full bg-rose-500/10 border border-rose-500/20 p-5 rounded-2xl text-left text-rose-500 font-bold hover:bg-rose-500/20 transition-colors"
+              >
+                Logout
               </button>
             </div>
           </div>
-
-          {/* --- Grid Content --- */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard 
-              title="Sleep Quality" 
-              value="8.2h" 
-              desc="Normal range" 
-              Icon={Calendar} 
-              color="cyan"
-            />
-            <StatCard 
-              title="Heart Rate" 
-              value="72 bpm" 
-              desc="Resting avg" 
-              Icon={Heart} 
-              color="rose"
-            />
-            <StatCard 
-              title="Cognitive Load" 
-              value="Low" 
-              desc="Excellent focus" 
-              Icon={Brain} 
-              color="purple"
-            />
-          </div>
-
-          {/* --- Recent Activity --- */}
-          <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8">
-            <div className="flex justify-between items-center mb-8">
-              <h3 className="text-xl font-bold">Recent History</h3>
-              <button className="text-sm text-emerald-400 font-medium hover:underline">View All</button>
-            </div>
-            <div className="space-y-4">
-              {history.length > 0 ? (
-                history.map((item) => (
-                  <HistoryItem 
-                    key={item.id} 
-                    date={new Date(item.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} 
-                    score={item.score} 
-                    status={item.stress_level as any} 
-                  />
-                ))
-              ) : (
-                <div className="text-center py-12 text-slate-500">
-                  <Activity className="mx-auto mb-4 opacity-20" size={48} />
-                  <p>No health records found yet. Start your first check-in!</p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
-      </main>
-    </div>
-  );
-}
-
-// --- Helper Components ---
-
-interface NavItemProps {
-  Icon: LucideIcon;
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-}
-
-function NavItem({ Icon, label, active = false, onClick = () => {} }: NavItemProps) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-        active 
-          ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
-          : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/30'
-      }`}
-    >
-      <Icon size={20} />
-      <span className="font-medium text-sm">{label}</span>
-    </button>
-  );
-}
-
-interface StatCardProps {
-  title: string;
-  value: string;
-  desc: string;
-  Icon: LucideIcon;
-  color: 'cyan' | 'rose' | 'purple' | 'emerald';
-}
-
-function StatCard({ title, value, desc, Icon, color }: StatCardProps) {
-  const colors = {
-    cyan: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400',
-    rose: 'bg-rose-500/10 border-rose-500/20 text-rose-400',
-    purple: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
-    emerald: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      );
+    }
+    return null;
   };
 
-  return (
-    <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl hover:border-slate-700 transition-colors group">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110 ${colors[color]}`}>
-        <Icon size={20} />
-      </div>
-      <p className="text-slate-500 text-sm font-medium">{title}</p>
-      <h4 className="text-2xl font-bold mt-1 text-white">{value}</h4>
-      <p className="text-slate-600 text-xs mt-1">{desc}</p>
-    </div>
-  );
-}
+  const renderStressAlert = () => {
+    if (showAlertScore === null) return null;
+    
+    let stressLevel = 'Low';
+    if (showAlertScore >= 85) stressLevel = 'Critical';
+    else if (showAlertScore >= 70) stressLevel = 'High';
+    else if (showAlertScore >= 40) stressLevel = 'Moderate';
 
-interface HistoryItemProps {
-  date: string;
-  score: number;
-  status: 'Low' | 'Moderate' | 'High';
-}
+    const themeColors = {
+      Critical: 'text-rose-500 border-rose-500/20 bg-rose-500/10',
+      High: 'text-orange-500 border-orange-500/20 bg-orange-500/10',
+      Moderate: 'text-yellow-500 border-yellow-500/20 bg-yellow-500/10',
+      Low: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10'
+    };
 
-function HistoryItem({ date, score, status }: HistoryItemProps) {
-  const statusColors = {
-    Low: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    Moderate: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
-    High: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-  };
+    const buttonColors = {
+      Critical: 'bg-rose-500 hover:bg-rose-600',
+      High: 'bg-orange-500 hover:bg-orange-600',
+      Moderate: 'bg-yellow-500 hover:bg-yellow-600 text-slate-900',
+      Low: 'bg-emerald-500 hover:bg-emerald-600 text-slate-900'
+    };
 
-  return (
-    <div className="flex items-center justify-between p-4 rounded-2xl border border-slate-800/50 bg-slate-900/20 hover:bg-slate-900/40 transition-all group">
-      <div className="flex items-center gap-4">
-        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold text-slate-400">
-          {date.split(' ')[1]}
-        </div>
-        <div>
-          <p className="font-medium text-slate-200">{date}</p>
-          <p className="text-xs text-slate-500">Daily Stress Check-in</p>
-        </div>
-      </div>
-      <div className="flex items-center gap-6">
-        <div className="text-right hidden sm:block">
-          <p className="text-sm font-bold text-white">{score}</p>
-          <p className="text-[10px] text-slate-600 uppercase tracking-tighter font-bold">Score</p>
-        </div>
-        <div className={`px-4 py-1.5 rounded-full text-xs font-bold border ${statusColors[status]}`}>
-          {status}
-        </div>
-        <button className="p-2 text-slate-600 hover:text-emerald-400 transition-colors">
-          <ArrowUpRight size={20} />
+    const alerts = {
+      Critical: { title: 'Critical Stress Alert', sub: 'Immediate action needed', mainText: 'Critical', recTitle: 'Severe stress detected', recDesc: 'Please seek immediate support, disconnect from work, and try a deep breathing exercise.' },
+      High: { title: 'High Stress Alert', sub: 'Action recommended', mainText: 'High', recTitle: 'Elevated stress detected', recDesc: 'Take a 15-minute break and do a guided breathing session to lower your heart rate.' },
+      Moderate: { title: 'Moderate Stress Alert', sub: 'Stay mindful', mainText: 'Moderate', recTitle: 'Slightly elevated stress', recDesc: 'Stay mindful and remember to take short breaks throughout your day.' },
+      Low: { title: 'Doing Great!', sub: 'Keep it up', mainText: 'Low', recTitle: 'Excellent', recDesc: 'Your stress levels are well managed. Maintain your current healthy routine and mindfulness practices.' }
+    };
+
+    const data = alerts[stressLevel as keyof typeof alerts];
+    const colorClass = themeColors[stressLevel as keyof typeof themeColors];
+    const btnClass = buttonColors[stressLevel as keyof typeof buttonColors];
+
+    return (
+      <div className="flex-1 overflow-y-auto px-6 py-10 space-y-6 max-w-lg mx-auto w-full">
+        <button 
+          onClick={() => setShowAlertScore(null)}
+          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          Back
         </button>
+
+        {/* Alert Header */}
+        <div className={`p-4 rounded-2xl border flex items-center gap-4 ${colorClass}`}>
+          <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+            {stressLevel === 'Low' ? <Calendar size={24} /> : <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>}
+          </div>
+          <div>
+            <h2 className="font-bold text-lg">{data.title}</h2>
+            <p className="opacity-80 text-sm">{data.sub}</p>
+          </div>
+        </div>
+
+        {/* Main Score Card */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8 flex flex-col items-center text-center">
+          <div className={`w-40 h-40 rounded-full border-[10px] flex flex-col items-center justify-center mb-6 ${colorClass.split(' ')[0].replace('text-', 'border-')}`}>
+            <span className="text-5xl font-extrabold text-white">{showAlertScore}</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Score</span>
+          </div>
+          <h3 className={`text-2xl font-bold ${colorClass.split(' ')[0]}`}>{data.mainText}</h3>
+          <p className="text-slate-400 text-sm mt-1">Current status</p>
+        </div>
+
+        {/* Recommendation Card */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <svg className={colorClass.split(' ')[0]} xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <h4 className="font-bold text-white text-lg">{data.recTitle}</h4>
+          </div>
+          <p className="text-slate-400 text-sm leading-relaxed">{data.recDesc}</p>
+        </div>
+
+        {/* Action Button */}
+        <button className={`w-full py-4 rounded-2xl font-bold text-white mt-4 shadow-lg active:scale-95 transition-all ${btnClass}`}>
+          {stressLevel === 'Critical' || stressLevel === 'High' ? 'Start Emergency Breathing' : 'Start Breathing Exercise'}
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-[#050810] text-slate-200 font-sans flex overflow-hidden">
+      <div className="w-full h-screen flex flex-col md:flex-row relative bg-[#050810]">
+        
+        {/* Desktop Side Navigation */}
+        <div className="hidden md:flex flex-col w-[300px] lg:w-[350px] border-r border-slate-800 p-6 pt-12 space-y-8 h-full bg-slate-900/30">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 bg-emerald-500 rounded-full flex items-center justify-center text-[#050810] font-bold">C</div>
+            <h1 className="text-xl font-bold text-white tracking-wider">CortiSense</h1>
+          </div>
+          
+          <button onClick={() => setActiveTab('Home')} className={`flex items-center gap-4 p-4 rounded-2xl transition-all ${activeTab === 'Home' ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}>
+            <Home size={24} className={activeTab === 'Home' ? 'fill-emerald-400/20' : ''} />
+            <span className="font-bold text-lg">Home</span>
+          </button>
+          
+          <button onClick={() => setActiveTab('Analytics')} className={`flex items-center gap-4 p-4 rounded-2xl transition-all ${activeTab === 'Analytics' ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}>
+            <BarChart3 size={24} className={activeTab === 'Analytics' ? 'fill-emerald-400/20' : ''} />
+            <span className="font-bold text-lg">Analytics</span>
+          </button>
+
+          <button onClick={() => router.push('/checkin')} className="flex items-center gap-4 p-4 rounded-2xl text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 transition-all">
+            <PlusCircle size={24} />
+            <span className="font-bold text-lg">Check-in</span>
+          </button>
+          
+          <button onClick={() => setActiveTab('Profile')} className={`flex items-center gap-4 p-4 rounded-2xl transition-all ${activeTab === 'Profile' ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}>
+            <User size={24} className={activeTab === 'Profile' ? 'fill-emerald-400/20' : ''} />
+            <span className="font-bold text-lg">Profile</span>
+          </button>
+        </div>
+
+        {/* Dynamic Content */}
+        <div className="flex-1 h-full overflow-y-auto bg-[#0a0f1c] relative">
+          <div className="w-full max-w-4xl mx-auto pb-24 md:pb-12">
+            {showAlertScore !== null ? renderStressAlert() : renderContent()}
+          </div>
+        </div>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <div className="md:hidden absolute bottom-0 left-0 w-full bg-[#050810] border-t border-slate-800 px-6 py-4 flex justify-between items-center z-50">
+          <button 
+            onClick={() => setActiveTab('Home')}
+            className={`flex flex-col items-center gap-1 ${activeTab === 'Home' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-400'}`}
+          >
+            <Home size={24} className={activeTab === 'Home' ? 'fill-emerald-400/20' : ''} />
+            <span className="text-[10px] font-bold">Home</span>
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('Analytics')}
+            className={`flex flex-col items-center gap-1 ${activeTab === 'Analytics' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-400'}`}
+          >
+            <BarChart3 size={24} className={activeTab === 'Analytics' ? 'fill-emerald-400/20' : ''} />
+            <span className="text-[10px] font-bold">Analytics</span>
+          </button>
+          
+          <button 
+            onClick={() => router.push('/checkin')}
+            className="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-400"
+          >
+            <PlusCircle size={24} />
+            <span className="text-[10px] font-bold">Check-in</span>
+          </button>
+          
+          <button 
+            onClick={() => setActiveTab('Profile')}
+            className={`flex flex-col items-center gap-1 ${activeTab === 'Profile' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-400'}`}
+          >
+            <User size={24} className={activeTab === 'Profile' ? 'fill-emerald-400/20' : ''} />
+            <span className="text-[10px] font-bold">Profile</span>
+          </button>
+        </div>
+
       </div>
     </div>
   );
