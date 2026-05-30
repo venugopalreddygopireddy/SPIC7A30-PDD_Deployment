@@ -116,41 +116,109 @@ export default function Dashboard() {
   // ==========================================
   const renderTrends = () => {
     if (!trendsData) return <div className="text-center py-10 text-slate-500">Loading Trends...</div>;
+    
+    // Process trends to draw SVG
+    const maxScore = 100;
+    const height = 160;
+    const width = 1000; // arbitrary internal SVG width for viewBox
+    const step = trendsData.trends.length > 1 ? width / (trendsData.trends.length - 1) : width;
+
+    let pathD = "";
+    const points: {x: number, y: number, score: number}[] = [];
+
+    trendsData.trends.forEach((item, index) => {
+      const x = index * step;
+      const y = height - (item.score / maxScore) * height;
+      points.push({ x, y, score: item.score });
+
+      if (index === 0) {
+        pathD += `M ${x} ${y} `;
+      } else {
+        const prevX = (index - 1) * step;
+        const prevY = height - (trendsData.trends[index - 1].score / maxScore) * height;
+        pathD += `C ${prevX + step / 2} ${prevY}, ${x - step / 2} ${y}, ${x} ${y} `;
+      }
+    });
+
+    const fillPathD = pathD ? `${pathD} L ${width} ${height} L 0 ${height} Z` : "";
+
     return (
       <div className="space-y-6">
-        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6">
+        {/* Wave Graph Card */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-[32px] p-6 shadow-lg shadow-black/20">
           <h3 className="text-white font-bold text-lg">Stress Trends</h3>
-          <p className="text-slate-400 text-xs mb-8">Daily average stress level over the last 7 days</p>
+          <p className="text-slate-400 text-xs mb-8">Daily average stress level</p>
           
-          {/* Simple CSS-based wave graph substitute */}
-          <div className="h-40 flex items-end justify-between gap-2 relative">
-            {trendsData.trends.map((item, i) => {
-              const height = `${(item.score / 100) * 100}%`;
-              let color = 'bg-emerald-500';
-              if (item.level === 'Critical') color = 'bg-rose-500';
-              else if (item.level === 'High') color = 'bg-orange-500';
-              else if (item.level === 'Moderate') color = 'bg-yellow-500';
+          <div className="relative w-full h-[160px]">
+            <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" className="w-full h-full overflow-visible">
+              <defs>
+                <linearGradient id="waveGradient" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                </linearGradient>
+              </defs>
 
-              return (
-                <div key={i} className="flex flex-col items-center flex-1 group">
-                  <div className="w-full flex justify-center h-full items-end relative pb-2">
-                    <div 
-                      className={`w-full max-w-[20px] rounded-t-lg ${color} opacity-80 group-hover:opacity-100 transition-all`} 
-                      style={{ height }}
-                    ></div>
-                    {/* Tooltip */}
-                    <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 bg-slate-800 text-white text-[10px] px-2 py-1 rounded pointer-events-none transition-opacity">
-                      {item.score}
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase">
-                    {new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                  </span>
-                </div>
-              );
-            })}
+              {/* Grid Lines */}
+              <line x1="0" y1="0" x2={width} y2="0" stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
+              <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
+              <line x1="0" y1={height} x2={width} y2={height} stroke="#334155" strokeWidth="1" strokeDasharray="10 10" opacity="0.5" />
+
+              {/* Area Fill */}
+              {fillPathD && (
+                <path d={fillPathD} fill="url(#waveGradient)" />
+              )}
+              
+              {/* Stroke Path */}
+              {pathD && (
+                <path d={pathD} fill="none" stroke="#10b981" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+              )}
+
+              {/* Points */}
+              {points.map((p, i) => (
+                <g key={i}>
+                  <circle cx={p.x} cy={p.y} r="16" fill="#0f172a" />
+                  <circle cx={p.x} cy={p.y} r="8" fill="#10b981" />
+                  <text 
+                    x={p.x} 
+                    y={p.y - 25} 
+                    fill="white" 
+                    fontSize="24" 
+                    fontWeight="bold" 
+                    textAnchor="middle"
+                  >
+                    {p.score}
+                  </text>
+                </g>
+              ))}
+            </svg>
+          </div>
+
+          {/* X-Axis Labels */}
+          <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+            {trendsData.trends.map((item, i) => (
+              <span key={i}>{new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' })}</span>
+            ))}
           </div>
         </div>
+
+        {/* Streak Calendar (moved from Monthly tab) */}
+        {monthlyData && (
+          <div className="bg-slate-900/50 border border-slate-800 rounded-[32px] p-6 shadow-lg shadow-black/20">
+            <h3 className="text-white font-bold text-lg mb-4">Calendar Activity</h3>
+            <div className="grid grid-cols-7 gap-2">
+              {Object.keys(monthlyData.calendar_activity).slice(0, 28).map((dateStr, i) => {
+                const score = monthlyData.calendar_activity[dateStr];
+                let bg = 'bg-slate-800';
+                if (score > 80) bg = 'bg-rose-500';
+                else if (score > 60) bg = 'bg-orange-500';
+                else if (score > 40) bg = 'bg-yellow-500';
+                else if (score > 0) bg = 'bg-emerald-500';
+                
+                return <div key={i} className={`aspect-square rounded-md ${bg} opacity-80 shadow-inner`}></div>;
+              })}
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -201,33 +269,74 @@ export default function Dashboard() {
 
   const renderMonthly = () => {
     if (!monthlyData) return <div className="text-center py-10 text-slate-500">Loading Monthly Data...</div>;
+    
+    const lowDays = monthlyData.distribution.low;
+    const moderateDays = monthlyData.distribution.moderate;
+    const highDays = monthlyData.distribution.high;
+    const total = monthlyData.total_checkins;
+    const lowPercent = total > 0 ? Math.round((lowDays * 100) / total) : 0;
+    
     return (
       <div className="space-y-6">
-        <div className="flex gap-4">
-          <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex flex-col justify-center">
-            <span className="text-3xl font-extrabold text-white mb-1">{monthlyData.avg_score}</span>
-            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Monthly Avg</span>
-          </div>
-          <div className="flex-1 bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex flex-col justify-center">
-            <span className="text-3xl font-extrabold text-white mb-1">{monthlyData.total_checkins}</span>
-            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Total Check-ins</span>
+        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex flex-col items-center text-center">
+          <p className="text-slate-400 text-xs mb-2 uppercase tracking-wider font-bold">Average Stress Score</p>
+          <span className="text-5xl font-extrabold text-white mb-2">{monthlyData.avg_score}</span>
+          <div className="flex items-center text-emerald-400 text-sm font-medium">
+            <TrendingUp size={16} className="mr-1 rotate-180" />
+            Calculated from {total} check-ins
           </div>
         </div>
         
-        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6">
-          <h3 className="text-white font-bold mb-4">Calendar Activity</h3>
-          <div className="grid grid-cols-7 gap-2">
-            {Object.keys(monthlyData.calendar_activity).slice(0, 28).map((dateStr, i) => {
-              const score = monthlyData.calendar_activity[dateStr];
-              let bg = 'bg-slate-800';
-              if (score > 80) bg = 'bg-rose-500';
-              else if (score > 60) bg = 'bg-orange-500';
-              else if (score > 40) bg = 'bg-yellow-500';
-              else if (score > 0) bg = 'bg-emerald-500';
-              
-              return <div key={i} className={`aspect-square rounded-md ${bg} opacity-80`}></div>;
-            })}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-start">
+            <div className="text-emerald-500 mb-2"><Calendar size={16} /></div>
+            <span className="text-white font-bold text-xl">{total}</span>
+            <span className="text-slate-400 text-[10px] uppercase font-bold mt-1">Check-ins</span>
           </div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-start">
+            <div className="text-emerald-500 mb-2"><TrendingUp size={16} className="rotate-180" /></div>
+            <span className="text-white font-bold text-xl">
+              {Object.values(monthlyData.calendar_activity).length > 0 ? Math.min(...Object.values(monthlyData.calendar_activity)) : 0}
+            </span>
+            <span className="text-slate-400 text-[10px] uppercase font-bold mt-1">Lowest Score</span>
+          </div>
+          <div className="bg-slate-900/50 border border-slate-800 rounded-2xl p-4 flex flex-col items-start">
+            <div className="text-rose-500 mb-2"><TrendingUp size={16} /></div>
+            <span className="text-white font-bold text-xl">
+              {Object.values(monthlyData.calendar_activity).length > 0 ? Math.max(...Object.values(monthlyData.calendar_activity)) : 0}
+            </span>
+            <span className="text-slate-400 text-[10px] uppercase font-bold mt-1">Highest Score</span>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6">
+          <h3 className="text-white font-bold mb-4">Stress Distribution</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span className="text-slate-200">Low</span></div>
+              <span className="text-white font-bold">{lowDays} times</span>
+            </div>
+            <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-emerald-500" style={{ width: `${total > 0 ? (lowDays/total)*100 : 0}%` }}></div></div>
+
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-yellow-500"></div><span className="text-slate-200">Moderate</span></div>
+              <span className="text-white font-bold">{moderateDays} times</span>
+            </div>
+            <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-yellow-500" style={{ width: `${total > 0 ? (moderateDays/total)*100 : 0}%` }}></div></div>
+
+            <div className="flex justify-between items-center text-sm">
+              <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-rose-500"></div><span className="text-slate-200">High</span></div>
+              <span className="text-white font-bold">{highDays} times</span>
+            </div>
+            <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-rose-500" style={{ width: `${total > 0 ? (highDays/total)*100 : 0}%` }}></div></div>
+          </div>
+        </div>
+
+        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6">
+          <h3 className="text-white font-bold mb-2">Monthly Achievement</h3>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            {lowPercent}% of your days were marked with low stress. Keep up the good work and maintain your healthy habits.
+          </p>
         </div>
       </div>
     );
