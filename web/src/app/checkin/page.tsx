@@ -252,88 +252,99 @@ export default function CheckInScreen() {
 
   if (analysisResult) {
     const isHigh = analysisResult.stress_level === 'High' || analysisResult.stress_level === 'Critical' || analysisResult.stress_level === 'Extreme';
-    const mainColor = isHigh ? '#F07349' : '#82e0aa';
+    const isModerate = analysisResult.stress_level === 'Moderate';
     
+    // Determine colors and labels based on stress level
+    let alertColor = isHigh ? 'text-rose-500' : isModerate ? 'text-amber-500' : 'text-emerald-500';
+    let alertBg = isHigh ? 'bg-rose-500/10' : isModerate ? 'bg-amber-500/10' : 'bg-emerald-500/10';
+    let alertBorder = isHigh ? 'border-rose-500/20' : isModerate ? 'border-amber-500/20' : 'border-emerald-500/20';
+    let orbColor = isHigh ? '#f43f5e' : isModerate ? '#f59e0b' : '#10b981';
+
+    // Parse recommendations into a list
+    const recommendationsList = analysisResult.recommendation
+      .split(/(?<=[.!?])\s+/)
+      .filter((s: string) => s.trim().length > 5);
+      
+    if (recommendationsList.length === 0) {
+       recommendationsList.push("Take a 5-minute deep breathing break.");
+       recommendationsList.push("Step away from your screen and stretch.");
+    }
+
     return (
-      <div className="min-h-screen bg-[#11131C] text-slate-200 font-sans flex flex-col p-6">
-        <div className="flex justify-start mb-8 mt-4">
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm ${isHigh ? 'bg-[#3B2A2D] text-[#E0665A]' : 'bg-[#2A3B30] text-[#82e0aa]'}`}>
-             {isHigh ? <CloudLightning size={18} /> : <CheckCircle2 size={18} />}
-             {analysisResult.stress_level} Stress
-          </div>
-        </div>
-
-        <div className="flex flex-col items-center justify-center mb-10 relative">
-          <svg width="200" height="200" viewBox="0 0 200 200" className="rotate-[-90deg]">
-             <circle cx="100" cy="100" r="80" fill="none" stroke="#2D2D3D" strokeWidth="16" />
-             <circle cx="100" cy="100" r="80" fill="none" stroke={mainColor} strokeWidth="16" 
-                     strokeDasharray="502" strokeDashoffset={502 - (502 * analysisResult.score) / 100} strokeLinecap="round" />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-             <span className="text-5xl font-bold text-white tracking-tight">{analysisResult.score}</span>
-             <span className="text-sm text-slate-400 mt-1 font-medium">Stress Index</span>
-             <span className="text-xs text-slate-500 mt-0.5">/100</span>
-          </div>
-        </div>
-
-        <div className="bg-[#1C1E2B] rounded-3xl p-6 mb-6">
-          <h3 className="text-lg font-bold text-white mb-1">3D Breakdown</h3>
-          <p className="text-xs text-slate-400 mb-6 font-medium">Brain • Heart • Body</p>
-          
-          <div className="space-y-5">
-             <div className="flex flex-col gap-2">
-               <div className="flex justify-between text-sm font-medium">
-                  <span className="flex items-center gap-2 text-white"><BrainCircuit size={16} className="text-pink-400" /> Brain (Cognitive)</span>
-                  <span className="text-blue-400 font-mono text-xs">0/12</span>
-               </div>
-               <div className="h-2 w-full bg-[#2D2D3D] rounded-full overflow-hidden">
-                  <div className="h-full bg-pink-400 w-0"></div>
-               </div>
-             </div>
-             <div className="flex flex-col gap-2">
-               <div className="flex justify-between text-sm font-medium">
-                  <span className="flex items-center gap-2 text-white"><Heart size={16} className="text-red-500" /> Heart (Emotional)</span>
-                  <span className="text-blue-400 font-mono text-xs">0/12</span>
-               </div>
-               <div className="h-2 w-full bg-[#2D2D3D] rounded-full overflow-hidden">
-                  <div className="h-full bg-red-500 w-0"></div>
-               </div>
-             </div>
-             <div className="flex flex-col gap-2">
-               <div className="flex justify-between text-sm font-medium">
-                  <span className="flex items-center gap-2 text-white"><Activity size={16} className="text-red-600" /> Body (Nervous)</span>
-                  <span className="text-blue-400 font-mono text-xs">0/12</span>
-               </div>
-               <div className="h-2 w-full bg-[#2D2D3D] rounded-full overflow-hidden">
-                  <div className="h-full bg-red-600 w-0"></div>
-               </div>
-             </div>
-          </div>
-        </div>
-
-        <h3 className="text-lg font-bold text-white mb-4">AI Recommendation</h3>
+      <div className="min-h-screen bg-[#0A0E17] text-slate-200 font-sans flex flex-col items-center pt-8 pb-12 px-4 md:px-6">
         
-        <div className="bg-[#1F1921] border border-[#3B2A2D] rounded-2xl p-5 mb-4">
-           <p className="text-slate-200 text-sm leading-relaxed font-medium">{analysisResult.recommendation}</p>
-        </div>
-
-        {analysisResult.is_escalated && (
-          <div className="bg-[#2B1B1F] border border-[#52292E] rounded-2xl p-4 mb-8 flex items-start gap-4">
-             <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={20} />
-             <p className="text-red-500 font-medium text-sm leading-relaxed">Escalation status active: High stress levels detected.</p>
+        {/* Top Alert Box */}
+        <div className={`w-full max-w-md rounded-2xl border ${alertBorder} ${alertBg} p-4 mb-6 flex items-start gap-4`}>
+          <div className={`mt-0.5 ${alertColor}`}>
+            <AlertTriangle size={24} />
           </div>
-        )}
-
-        <div className="flex-1" />
-
-        <div className="flex gap-4 mt-8 pb-4">
-           <button onClick={() => window.location.reload()} className="flex-1 py-4 rounded-2xl border border-slate-700 text-white font-bold text-center hover:bg-slate-800 transition-colors">
-              Recheck
-           </button>
-           <button onClick={() => window.location.href = '/'} className={`flex-1 py-4 rounded-2xl text-white font-bold text-center transition-colors ${isHigh ? 'bg-[#F07349] hover:bg-[#E0665A]' : 'bg-[#82e0aa] hover:bg-emerald-400 text-black'}`}>
-              View Insights
-           </button>
+          <div>
+            <h2 className={`font-bold text-lg ${alertColor}`}>{analysisResult.stress_level} Stress Alert</h2>
+            <p className="text-slate-400 text-sm mt-0.5">Stay mindful</p>
+          </div>
         </div>
+
+        {/* Score Orb Card */}
+        <div className="w-full max-w-md bg-[#131722] border border-slate-800/60 rounded-3xl p-8 mb-6 flex flex-col items-center justify-center shadow-lg">
+          <div className="relative mb-6">
+            <svg width="180" height="180" viewBox="0 0 200 200" className="rotate-[-90deg]">
+               <circle cx="100" cy="100" r="80" fill="none" stroke="#1F2332" strokeWidth="12" />
+               <circle cx="100" cy="100" r="80" fill="none" stroke={orbColor} strokeWidth="12" 
+                       strokeDasharray="502" strokeDashoffset={502 - (502 * analysisResult.score) / 100} strokeLinecap="round" />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+               <span className="text-5xl font-extrabold text-white tracking-tight">{analysisResult.score}</span>
+               <span className="text-xs text-slate-400 mt-1 font-bold uppercase tracking-widest">SCORE</span>
+            </div>
+          </div>
+          
+          <h2 className={`text-2xl font-bold ${alertColor}`}>{analysisResult.stress_level}</h2>
+          <p className="text-slate-400 text-sm mt-1">Current status</p>
+        </div>
+
+        {/* Info / Message Box */}
+        <div className="w-full max-w-md bg-[#131722] border border-slate-800/60 rounded-3xl p-6 mb-6 shadow-lg">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="text-amber-500">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </div>
+            <h3 className="text-white font-bold text-lg">Slightly elevated stress</h3>
+          </div>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            {analysisResult.message || "Stay mindful and remember to take short breaks throughout your day."}
+          </p>
+        </div>
+
+        {/* Recommended Actions */}
+        <div className="w-full max-w-md mb-8">
+          <h3 className="text-white font-bold text-xl mb-4 px-1">Recommended Actions</h3>
+          <div className="space-y-3">
+            {recommendationsList.map((rec: string, idx: number) => (
+              <div key={idx} className="bg-[#1C2030] border border-slate-700/50 rounded-2xl p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <CheckCircle2 size={20} />
+                </div>
+                <p className="text-slate-300 text-sm font-medium leading-relaxed">{rec}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Primary Action Button */}
+        <button 
+          onClick={() => window.location.href = '/'} 
+          className="w-full max-w-md bg-[#FFC107] hover:bg-[#FFCA28] text-black font-bold text-lg py-4 rounded-xl shadow-lg transition-colors"
+        >
+          {isHigh ? 'View Insights' : 'Start Breathing Exercise'}
+        </button>
+        
+        <button 
+          onClick={() => window.location.href = '/'} 
+          className="w-full max-w-md mt-4 text-slate-400 font-semibold py-3 hover:text-white transition-colors"
+        >
+          Back to Dashboard
+        </button>
+
       </div>
     );
   }
