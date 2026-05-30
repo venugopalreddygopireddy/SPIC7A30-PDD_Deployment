@@ -27,6 +27,27 @@ from sqlalchemy.engine.reflection import Inspector
 
 models.Base.metadata.create_all(bind=engine)
 
+def upgrade_schema():
+    try:
+        from sqlalchemy.sql import text
+        with engine.connect() as conn:
+            # Attempt to add new columns if they don't exist. Ignore errors if they do.
+            statements = [
+                "ALTER TABLE stress_checkins ADD COLUMN caffeine_dependency VARCHAR DEFAULT 'No'",
+                "ALTER TABLE stress_checkins ADD COLUMN workload VARCHAR DEFAULT 'Normal'",
+                "ALTER TABLE stress_checkins ADD COLUMN body_feeling VARCHAR DEFAULT 'Normal'"
+            ]
+            for stmt in statements:
+                try:
+                    conn.execute(text(stmt))
+                    conn.commit()
+                except Exception:
+                    conn.rollback() # Rollback if column already exists
+    except Exception as e:
+        pass
+
+upgrade_schema()
+
 try:
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))

@@ -546,19 +546,12 @@ export default function Dashboard() {
         <div className="bg-[#4a3b7a] rounded-[24px] p-6 shadow-lg">
           <h3 className="text-white font-bold text-lg mb-3">AI Recommendation</h3>
           
-          {lastCheckinReasons.length === 0 ? (
-            <p className="text-indigo-100/80 text-[14px]">Add more check-ins to see personalized recommendations.</p>
+          {lastCheckin?.recommendation ? (
+            <p className="text-indigo-100/90 text-[14px] leading-relaxed">
+              {lastCheckin.recommendation}
+            </p>
           ) : (
-            <div className="space-y-4">
-              {lastCheckinReasons.slice(0, 2).map((reason: string, i: number) => (
-                <div key={i}>
-                  <p className="text-white font-bold text-sm mb-1">• {getTranslatedReason(reason)}</p>
-                  <p className="text-indigo-100/90 text-[13px] leading-relaxed pl-3">
-                    {getFactorRecommendation(reason)}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <p className="text-indigo-100/80 text-[14px]">Add more check-ins to see personalized recommendations.</p>
           )}
         </div>
       </div>
