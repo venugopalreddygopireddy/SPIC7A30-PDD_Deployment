@@ -173,7 +173,10 @@ export default function CheckInScreen() {
       const submitData = { ...formData };
       submitData.alcohol_intake = submitData.alcohol_intake.toString();
       submitData.meditation_practice = submitData.meditation_practice.toString();
+      submitData.travel_time = Math.round(submitData.travel_time); // backend expects int
+      submitData.age = Number(submitData.age);
       
+      console.log('Sending checkin data:', submitData);
       const result = await submitCheckIn(submitData);
       
       // Wait at least until step 4 is reached before showing result
@@ -184,7 +187,11 @@ export default function CheckInScreen() {
 
     } catch (err: any) {
       setIsAnalyzing(false);
-      setError(`Submission failed: ${err.response?.data?.detail || err.message || 'Unknown error'}`);
+      let errorDetail = err.response?.data?.detail;
+      if (typeof errorDetail === 'object') {
+        errorDetail = JSON.stringify(errorDetail);
+      }
+      setError(`Submission failed: ${errorDetail || err.message || 'Unknown error'}`);
       console.error(err);
     } finally {
       setLoading(false);
