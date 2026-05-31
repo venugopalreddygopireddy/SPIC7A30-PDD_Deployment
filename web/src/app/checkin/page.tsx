@@ -1,8 +1,8 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, User, Moon, Zap, Briefcase, Activity as RunIcon, Check, BrainCircuit, CloudLightning, Heart, AlertTriangle, Activity } from 'lucide-react';
-import { submitCheckIn, CheckInRequest } from '@/lib/api';
+import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, User, Moon, Zap, Briefcase, Check, BrainCircuit, AlertTriangle, Activity, Activity as RunIcon } from 'lucide-react';
+import { submitCheckIn, CheckInRequest, ActionItem, completeAction } from '@/lib/api';
 
 const steps = [
   { id: 1, title: 'Personal Information', icon: <User size={28} className="text-blue-400" /> },
@@ -97,6 +97,18 @@ export default function CheckInScreen() {
   const [analyzeStep, setAnalyzeStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
+  const [actions, setActions] = useState<ActionItem[]>([]);
+
+  const handleCompleteAction = async (actionId: string) => {
+    try {
+      setActions(prev => prev.filter(a => a.id !== actionId));
+      if (analysisResult?.id) {
+        await completeAction(analysisResult.id, actionId);
+      }
+    } catch (e) {
+      console.error('Failed to complete action', e);
+    }
+  };
 
   const [formData, setFormData] = useState<CheckInRequest>({
     age: 21,
@@ -182,6 +194,9 @@ export default function CheckInScreen() {
       // Wait at least until step 4 is reached before showing result
       setTimeout(() => {
         setAnalysisResult(result);
+        if (result.actions) {
+          setActions(result.actions.filter((a: ActionItem) => !a.is_done));
+        }
         setIsAnalyzing(false);
       }, 3500);
 
@@ -260,7 +275,7 @@ export default function CheckInScreen() {
     let alertBorder = isHigh ? 'border-rose-500/20' : isModerate ? 'border-amber-500/20' : 'border-emerald-500/20';
     let orbColor = isHigh ? '#f43f5e' : isModerate ? '#f59e0b' : '#10b981';
 
-    // Parse recommendations into a list
+    // Recommendations parsed into list
     const recommendationsList = analysisResult.recommendation
       .split(/(?<=[.!?])\s+/)
       .filter((s: string) => s.trim().length > 5);
@@ -317,17 +332,41 @@ export default function CheckInScreen() {
 
         {/* Recommended Actions */}
         <div className="w-full max-w-md mb-8">
-          <h3 className="text-white font-bold text-xl mb-4 px-1">Recommended Actions</h3>
-          <div className="space-y-3">
-            {recommendationsList.map((rec: string, idx: number) => (
-              <div key={idx} className="bg-[#1C2030] border border-slate-700/50 rounded-2xl p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                  <CheckCircle2 size={20} />
+          <h3 className="text-white font-bold text-xl mb-4 px-1">Actionable Recommendations</h3>
+          {actions.length > 0 ? (
+            <div className="space-y-4">
+              {actions.map((act) => (
+                <div key={act.id} className="bg-[#1C2030] border border-slate-700/50 rounded-2xl p-5 flex flex-col gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <CheckCircle2 size={20} />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-slate-100 font-bold text-base">{act.title}</h4>
+                      <p className="text-slate-400 text-sm mt-1 leading-relaxed">{act.description}</p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => handleCompleteAction(act.id)}
+                    className="mt-2 w-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-semibold py-2.5 rounded-xl transition-colors"
+                  >
+                    Mark as Done
+                  </button>
                 </div>
-                <p className="text-slate-300 text-sm font-medium leading-relaxed">{rec}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recommendationsList.map((rec: string, idx: number) => (
+                <div key={idx} className="bg-[#1C2030] border border-slate-700/50 rounded-2xl p-4 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <p className="text-slate-300 text-sm font-medium leading-relaxed">{rec}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Primary Action Button */}

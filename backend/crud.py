@@ -27,6 +27,7 @@ def create_stress_checkin(db: Session, checkin_data: schemas.CheckInRequest, ana
         stress_level=analysis_result["stress_level"],
         score=analysis_result["score"],
         recommendation=analysis_result["recommendation"],
+        actions=analysis_result.get("actions", []),
         is_escalated=analysis_result["is_escalated"]
     )
     db.add(db_checkin)

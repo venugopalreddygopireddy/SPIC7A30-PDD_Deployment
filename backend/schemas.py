@@ -1,5 +1,5 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+from pydantic import BaseModel
+from typing import Optional, Union
 from datetime import datetime
 
 # =========================================================
@@ -48,6 +48,32 @@ class ResetPasswordRequest(BaseModel):
 
 
 
+
+# =========================================================
+# PROFILE SCHEMAS
+# =========================================================
+
+class ProfileResponse(BaseModel):
+    first_name: str
+    last_name: str
+    mobile_number: Optional[str] = ""
+    dob: Optional[str] = ""
+    age: int
+    gender: str
+    goal: Optional[str] = ""
+
+    class Config:
+        from_attributes = True
+
+class ProfileUpdate(BaseModel):
+    first_name: str
+    last_name: str
+    mobile_number: Optional[str] = ""
+    dob: Optional[str] = ""
+    age: int
+    gender: str
+    goal: Optional[str] = ""
+
 # =========================================================
 # CHECK-IN REQUEST
 # =========================================================
@@ -70,7 +96,7 @@ class CheckInRequest(BaseModel):
     screen_time: float
 
     caffeine_intake: int
-    alcohol_intake: str
+    alcohol_intake: int
     smoking_habit: str
 
     work_hours: float
@@ -78,7 +104,7 @@ class CheckInRequest(BaseModel):
 
     social_interactions: int
 
-    meditation_practice: str
+    meditation_practice: int
     exercise_type: str
 
     blood_pressure: int
@@ -106,6 +132,8 @@ class CheckInCreate(CheckInRequest):
 
 class AIAnalysisResult(BaseModel):
 
+    id: Optional[int] = None
+
     stress_level: str
 
     score: int
@@ -113,6 +141,8 @@ class AIAnalysisResult(BaseModel):
     message: str
 
     recommendation: str
+
+    actions: Optional[list] = []
 
     is_escalated: bool
 
@@ -133,6 +163,8 @@ class StressCheckInResponse(BaseModel):
 
     recommendation: str
 
+    actions: Optional[list] = []
+
     is_escalated: bool
 
     sleep_duration: Optional[float] = 0.0
@@ -143,6 +175,24 @@ class StressCheckInResponse(BaseModel):
     mood: Optional[str] = "Neutral"
     anxiety: Optional[str] = "Low"
     mobile_number: Optional[str] = ""
+    age: Optional[int] = 0
+    gender: Optional[str] = ""
+    occupation: Optional[str] = ""
+    marital_status: Optional[str] = ""
+    wake_up_time: Optional[str] = ""
+    bed_time: Optional[str] = ""
+    caffeine_intake: Optional[int] = 0
+    alcohol_intake: Optional[Union[str, int]] = ""
+    smoking_habit: Optional[str] = ""
+    work_hours: Optional[float] = 0.0
+    travel_time: Optional[int] = 0
+    social_interactions: Optional[int] = 0
+    meditation_practice: Optional[Union[str, int]] = ""
+    exercise_type: Optional[str] = ""
+    blood_pressure: Optional[int] = 0
+    blood_sugar_level: Optional[int] = 0
+    caffeine_dependency: Optional[str] = ""
+    body_feeling: Optional[str] = ""
 
     class Config:
         from_attributes = True
@@ -151,7 +201,7 @@ class StressCheckInResponse(BaseModel):
 # ANALYTICS RESPONSE
 # =========================================================
 
-from typing import Dict, List, Any
+from typing import Dict, List
 
 class WeeklyAnalyticsResponse(BaseModel):
     avg_score: int

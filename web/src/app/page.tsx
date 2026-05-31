@@ -8,11 +8,13 @@ import api, {
   MonthlyAnalyticsResponse, 
   TrendsResponse, 
   FactorsResponse,
+  DashboardSummaryResponse,
   getHistory,
   getWeeklyAnalytics,
   getMonthlyAnalytics,
   getTrendsAnalytics,
-  getFactorsAnalytics
+  getFactorsAnalytics,
+  getDashboardSummary
 } from '@/lib/api';
 import axios from 'axios';
 import { 
@@ -54,6 +56,7 @@ export default function Dashboard() {
   const [monthlyData, setMonthlyData] = useState<MonthlyAnalyticsResponse | null>(null);
   const [trendsData, setTrendsData] = useState<TrendsResponse | null>(null);
   const [factorsData, setFactorsData] = useState<FactorsResponse | null>(null);
+  const [dashboardSummary, setDashboardSummary] = useState<DashboardSummaryResponse | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -77,7 +80,8 @@ export default function Dashboard() {
           getWeeklyAnalytics().catch(() => null),
           getMonthlyAnalytics().catch(() => null),
           getTrendsAnalytics().catch(() => null),
-          getFactorsAnalytics().catch(() => null)
+          getFactorsAnalytics().catch(() => null),
+          getDashboardSummary().catch(() => null)
         ]);
         setHistory(hist);
         if (weekly) setWeeklyData(weekly);
@@ -101,13 +105,10 @@ export default function Dashboard() {
   }, []);
 
   const latestCheckIn = history[0];
-  const stressScore = latestCheckIn?.score ?? 0;
-  
-  // Dynamic stats calculation based on real data
-  const todayCheckinsCount = history.filter(item => {
-    const today = new Date().toISOString().split('T')[0];
-    return item.timestamp.startsWith(today);
-  }).length;
+  const stressScore = dashboardSummary?.latest_stress_score ?? 0;
+  const todayCheckinsCount = dashboardSummary?.today_checkins_count ?? 0;
+  const currentStreak = dashboardSummary?.current_streak ?? 0;
+  const latestSleepDuration = dashboardSummary?.latest_sleep_duration ?? 0;
 
   const greeting = new Date().getHours() < 12 ? 'Good Morning' : 'Good Evening';
 
@@ -647,7 +648,7 @@ const renderHistory = () => {
               <div className="text-emerald-500 mb-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
               </div>
-              <p className="text-white font-extrabold text-lg">{history.length > 0 ? 1 : 0}</p>
+              <p className="text-white font-extrabold text-lg">{currentStreak}</p>
               <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">Streak</p>
             </div>
             
@@ -655,7 +656,7 @@ const renderHistory = () => {
               <div className="text-emerald-500 mb-2">
                 <Clock size={18} />
               </div>
-              <p className="text-white font-extrabold text-lg">{history.length > 0 ? history[0].score : '0'}h</p>
+              <p className="text-white font-extrabold text-lg">{latestSleepDuration}h</p>
               <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">Sleep</p>
             </div>
           </div>

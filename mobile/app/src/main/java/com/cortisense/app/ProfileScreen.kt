@@ -54,14 +54,6 @@ fun ProfileScreen(
     val initialAge by viewModel.userAge.collectAsState()
     val initialGender by viewModel.userGender.collectAsState()
     val initialGoal by viewModel.userGoal.collectAsState()
-    val initialImageUri by viewModel.profileImageUri.collectAsState()
-
-    var imageUri by remember(initialImageUri) { mutableStateOf<String>(initialImageUri) }
-    
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri -> if (uri != null) imageUri = uri.toString() }
-    )
 
     var firstName by remember(initialFirstName) { mutableStateOf<String>(initialFirstName) }
     var lastName by remember(initialLastName) { mutableStateOf<String>(initialLastName) }
@@ -120,34 +112,16 @@ fun ProfileScreen(
         ) {
             
 
-            // Profile Picture
+            // Profile Picture (Static)
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(contentAlignment = Alignment.BottomEnd) {
-                    Box(
-                        modifier = Modifier.size(100.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(24.dp)).clip(RoundedCornerShape(24.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (imageUri.isNotEmpty()) {
-                            AsyncImage(
-                                model = imageUri,
-                                contentDescription = "Profile Picture",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(50.dp))
-                        }
-                    }
-                    Box(
-                        modifier = Modifier.size(32.dp).background(MaterialTheme.colorScheme.surface, RoundedCornerShape(16.dp)).border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.PhotoCamera, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                    }
+                Box(
+                    modifier = Modifier.size(100.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(24.dp)).clip(RoundedCornerShape(24.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(50.dp))
                 }
-                TextButton(onClick = { photoPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
-                    Text(stringResource(R.string.extracted_change_photo), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(userEmail, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -256,7 +230,7 @@ fun ProfileScreen(
             // Save Button
             Button(
                 onClick = {
-                    viewModel.updateProfile(firstName, lastName, userEmail, dob, age, gender, goal, mobile, imageUri)
+                    viewModel.updateProfile(firstName, lastName, userEmail, dob, age, gender, goal, mobile, "")
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(updatedMessage)
                     }

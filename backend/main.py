@@ -1,3 +1,7 @@
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -13,7 +17,8 @@ from sendgrid.helpers.mail import Mail
 from passlib.context import CryptContext
 import jwt
 from datetime import datetime, timedelta
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, OAuth2PasswordBearer
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='login')
 
 # Database Imports
 import models
@@ -43,7 +48,7 @@ def upgrade_schema():
                     conn.commit()
                 except Exception:
                     conn.rollback() # Rollback if column already exists
-    except Exception as e:
+    except Exception:
         pass
 
 upgrade_schema()
@@ -51,7 +56,7 @@ upgrade_schema()
 try:
     with engine.connect() as conn:
         conn.execute(text("SELECT 1"))
-        print("PostgreSQL Connected Successfully")
+        logger.info("PostgreSQL Connected Successfully")
         
         # Perform lightweight migration to add any missing columns (e.g. the 25 new fields)
         inspector = Inspector.from_engine(engine)
@@ -63,9 +68,9 @@ try:
                     try:
                         col_type = column.type.compile(engine.dialect)
                         conn.execute(text(f"ALTER TABLE stress_checkins ADD COLUMN {column.name} {col_type}"))
-                        print(f"Added missing column: {column.name}")
+                        logger.info(f"Added missing column: {column.name}")
                     except Exception as col_e:
-                        print(f"Failed to add column {column.name}: {col_e}")
+                        logger.error(f"Failed to add column {column.name}: {col_e}")
         if 'users' in inspector.get_table_names():
             columns = [col['name'] for col in inspector.get_columns('users')]
             for column in models.User.__table__.columns:
@@ -73,7 +78,7 @@ try:
                     try:
                         col_type = column.type.compile(engine.dialect)
                         conn.execute(text(f"ALTER TABLE users ADD COLUMN {column.name} {col_type}"))
-                    except Exception as col_e:
+                    except Exception:
                         pass
                         
             
@@ -82,7 +87,7 @@ try:
             except AttributeError:
                 pass # SQLAlchemy 1.4 connection doesn't always need explicit commit like 2.0
 except Exception as e:
-    print(f"Error connecting to PostgreSQL: {e}")
+    logger.error(f"Error connecting to PostgreSQL: {e}")
 
 # ============================================
 # FASTAPI APP
@@ -171,12 +176,12 @@ def send_otp_email(to_email: str, otp: str):
     from_email = os.getenv("FROM_EMAIL")
     
     if not sg_api_key or not from_email:
-        print("SMTP WARNING: SENDGRID_API_KEY or FROM_EMAIL env vars are not set.")
+        logger.warning("SMTP WARNING: SENDGRID_API_KEY or FROM_EMAIL env vars are not set.")
         return False
         
     try:
-        print("SendGrid initialized")
-        print("Sending OTP email via SendGrid...")
+        logger.info("SendGrid initialized")
+        logger.info("Sending OTP email via SendGrid...")
         
         message = Mail(
             from_email=from_email,
@@ -186,11 +191,11 @@ def send_otp_email(to_email: str, otp: str):
         )
         
         sg = SendGridAPIClient(sg_api_key)
-        response = sg.send(message)
-        print("SendGrid email sent successfully")
+        sg.send(message)
+        logger.info("SendGrid email sent successfully")
         return True
     except Exception as e:
-        print(f"SendGrid Exception: {e}")
+        logger.error(f"SendGrid Exception: {e}")
         return False
 
 @app.post("/forgot-password")
@@ -259,9 +264,9 @@ if os.path.exists(MODEL_PATH):
     label_encoders = joblib.load(ENCODER_PATH)
     scaler = joblib.load(SCALER_PATH)
     target_encoder = joblib.load(TARGET_ENCODER_PATH)
-    print("AI ONNX Model Loaded Successfully")
+    logger.info("AI ONNX Model Loaded Successfully")
 else:
-    print(f"WARNING: AI model file {MODEL_PATH} not found")
+    logger.warning(f"WARNING: AI model file {MODEL_PATH} not found")
 
 
 # ============================================
@@ -275,6 +280,38 @@ def home():
         "message": "CortiSense AI + PostgreSQL Backend Running"
     }
 
+
+
+# ============================================
+# PROFILE API
+# ============================================
+
+@app.get("/users/me/profile", response_model=schemas.ProfileResponse)
+def get_user_profile(
+    db: Session = Depends(get_db),
+    db_user: models.User = Depends(get_current_user)
+):
+    return db_user
+
+@app.put("/users/me/profile", response_model=schemas.ProfileResponse)
+def update_user_profile(
+    profile_data: schemas.ProfileUpdate,
+    db: Session = Depends(get_db),
+    db_user: models.User = Depends(get_current_user)
+):
+
+    db_user.first_name = profile_data.first_name
+    db_user.last_name = profile_data.last_name
+    db_user.mobile_number = profile_data.mobile_number
+    db_user.dob = profile_data.dob
+    db_user.age = profile_data.age
+    db_user.gender = profile_data.gender
+    db_user.goal = profile_data.goal
+
+    db.commit()
+    db.refresh(db_user)
+
+    return db_user
 
 # ============================================
 # CHECK-IN API
@@ -439,6 +476,35 @@ def receive_checkin(
             "Critical stress detected. Seek immediate support and take complete rest."
     }
 
+    import uuid
+    def generate_actions(level):
+        actions = []
+        def add(title, desc):
+            actions.append({"id": uuid.uuid4().hex[:8], "title": title, "description": desc, "is_done": False})
+        
+        if level == "Low":
+            add("Maintain Routine", "Keep up your current healthy habits and sleep schedule.")
+            add("Hydration Check", "Drink a glass of water to stay hydrated.")
+            add("Light Stretching", "Do a quick 2-minute stretch to keep muscles relaxed.")
+        elif level == "Moderate":
+            add("Box Breathing", "Inhale 4s, hold 4s, exhale 4s, hold 4s. Repeat for 2 minutes.")
+            add("Short Walk", "Take a 5-minute walk away from your desk or workspace.")
+            add("Mindful Break", "Close your eyes and focus on your breath for 3 minutes.")
+            add("Hydration Boost", "Drink a large glass of water immediately.")
+        elif level == "High":
+            add("Immediate Disconnect", "Step away from all screens for at least 10 minutes.")
+            add("Deep Relaxation", "Perform a 10-minute guided meditation or deep relaxation.")
+            add("Workload Reduction", "Identify one non-urgent task on your list and postpone it.")
+            add("Social Connection", "Reach out to a friend or colleague for a quick chat.")
+        elif level == "Critical":
+            add("Stop Working", "Immediately stop your current task and take a full break.")
+            add("Grounding Exercise", "Name 5 things you can see, 4 you can touch, 3 you can hear, 2 you can smell, 1 you can taste.")
+            add("Seek Support", "Consider talking to a professional or a trusted support person.")
+            add("Extended Rest", "Take at least 30 minutes of complete downtime.")
+        return actions
+
+    generated_actions = generate_actions(stress_level)
+
     # ========================================
     # FINAL RESPONSE
     # ========================================
@@ -457,6 +523,8 @@ def receive_checkin(
                 stress_level,
                 "Please take care of your health."
             ),
+            
+        "actions": generated_actions,
 
         "is_escalated":
             bool(predicted_class >= 2)
@@ -467,16 +535,16 @@ def receive_checkin(
     # ========================================
 
     try:
-        crud.create_stress_checkin(
+        db_checkin = crud.create_stress_checkin(
             db,
             data,
             analysis_result,
             user_id=current_user.id
         )
-        
+        analysis_result["id"] = db_checkin.id
 
     except Exception as e:
-        print("Database Save Error:", e)
+        logger.error(f"Database Save Error: {e}")
         db.rollback()
 
     # ========================================
@@ -488,6 +556,32 @@ def receive_checkin(
 
 # ============================================
 # HISTORY API
+# ============================================
+
+@app.patch("/checkin/{checkin_id}/action/{action_id}/complete")
+def complete_action(checkin_id: int, action_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    checkin = crud.get_checkin_by_id(db, checkin_id)
+    if not checkin or checkin.user_id != current_user.id:
+        raise HTTPException(status_code=404, detail="Check-in not found")
+        
+    actions = checkin.actions or []
+    updated = False
+    for act in actions:
+        if act.get("id") == action_id:
+            act["is_done"] = True
+            updated = True
+            break
+            
+    if not updated:
+        raise HTTPException(status_code=404, detail="Action not found")
+        
+    checkin.actions = list(actions)
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(checkin, "actions")
+    
+    db.commit()
+    return {"message": "Action marked as done"}
+
 # ============================================
 
 @app.get(
@@ -548,7 +642,7 @@ from collections import Counter
 def get_weekly_analytics(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     checkins = crud.get_checkins(db, user_id=current_user.id, limit=1000)
     week_ago = datetime.utcnow() - timedelta(days=7)
-    recent = [c for c in checkins if c.timestamp >= week_ago]
+    recent = [c for c in checkins if c.timestamp.replace(tzinfo=None) >= week_ago]
     
     if not recent:
         return {"avg_score": 0, "highest_score": 0, "lowest_score": 0, "total_checkins": 0, "distribution": {"low": 0, "moderate": 0, "high": 0}}
@@ -575,7 +669,7 @@ def get_weekly_analytics(db: Session = Depends(get_db), current_user: models.Use
 def get_monthly_analytics(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     checkins = crud.get_checkins(db, user_id=current_user.id, limit=1000)
     month_ago = datetime.utcnow() - timedelta(days=30)
-    recent = [c for c in checkins if c.timestamp >= month_ago]
+    recent = [c for c in checkins if c.timestamp.replace(tzinfo=None) >= month_ago]
     
     if not recent:
         return {"avg_score": 0, "total_checkins": 0, "distribution": {"low": 0, "moderate": 0, "high": 0}, "calendar_activity": {}}
@@ -606,7 +700,7 @@ def get_monthly_analytics(db: Session = Depends(get_db), current_user: models.Us
 def get_trends_analytics(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     checkins = crud.get_checkins(db, user_id=current_user.id, limit=1000)
     week_ago = datetime.utcnow() - timedelta(days=7)
-    recent = [c for c in checkins if c.timestamp >= week_ago]
+    recent = [c for c in checkins if c.timestamp.replace(tzinfo=None) >= week_ago]
     
     daily_stats = {}
     for c in recent:

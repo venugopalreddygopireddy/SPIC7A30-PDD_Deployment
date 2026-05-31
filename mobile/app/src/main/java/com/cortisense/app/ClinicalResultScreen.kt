@@ -211,27 +211,67 @@ fun ClinicalResultScreen(
                 Spacer(Modifier.height(20.dp))
             }
 
-            // ── Phase 2: AI Recommendation ───────────────────────────────
+            // ── Phase 2: Actionable Recommendations ──────────────────────
             Text(
-                stringResource(R.string.extracted_ai_recommendation),
+                "Actionable Recommendations",
                 fontWeight = FontWeight.Bold, fontSize = 18.sp,
                 color = MaterialTheme.colorScheme.onBackground
             )
             Spacer(Modifier.height(12.dp))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.05f)),
-                border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f))
-            ) {
-                Column(modifier = Modifier.padding(20.dp)) {
-                    Text(
-                        text = viewModel.aiRecommendation,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        lineHeight = 22.sp
-                    )
+            if (viewModel.aiActions.isNotEmpty()) {
+                viewModel.aiActions.forEach { action ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.05f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = color)
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    text = action.title,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                            }
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = action.description,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 20.sp
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Button(
+                                onClick = { viewModel.completeAiAction(action.id) },
+                                modifier = Modifier.fillMaxWidth().height(44.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = color)
+                            ) {
+                                Text("Mark as Done", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            }
+                        }
+                    }
+                }
+            } else {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.05f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.2f))
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text(
+                            text = viewModel.aiRecommendation,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            lineHeight = 22.sp
+                        )
+                    }
                 }
             }
 

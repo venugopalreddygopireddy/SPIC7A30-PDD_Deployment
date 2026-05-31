@@ -9,6 +9,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.POST
 import retrofit2.http.GET
+import retrofit2.http.PUT
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -131,7 +132,17 @@ data class CheckInRequest(
 // RESPONSE MODEL
 // ===============================
 
+data class ActionItem(
+    @SerializedName("id") val id: String,
+    @SerializedName("title") val title: String,
+    @SerializedName("description") val description: String,
+    @SerializedName("is_done") val isDone: Boolean
+)
+
 data class StressResponse(
+
+    @SerializedName("id")
+    val id: Int?,
 
     @SerializedName("stress_level")
     val stressLevel: String,
@@ -145,8 +156,32 @@ data class StressResponse(
     @SerializedName("recommendation")
     val recommendation: String,
 
+    @SerializedName("actions")
+    val actions: List<ActionItem>? = emptyList(),
+
     @SerializedName("is_escalated")
     val isEscalated: Boolean = false
+)
+
+
+data class ProfileResponse(
+    val first_name: String,
+    val last_name: String,
+    val mobile_number: String?,
+    val dob: String?,
+    val age: Int,
+    val gender: String,
+    val goal: String?
+)
+
+data class ProfileUpdate(
+    val first_name: String,
+    val last_name: String,
+    val mobile_number: String,
+    val dob: String,
+    val age: Int,
+    val gender: String,
+    val goal: String
 )
 
 data class StressCheckInResponse(
@@ -162,7 +197,8 @@ data class StressCheckInResponse(
     @SerializedName("screen_time") val screenTime: Double,
     @SerializedName("workload") val workload: String,
     @SerializedName("mood") val mood: String,
-    @SerializedName("anxiety") val anxiety: String
+    @SerializedName("anxiety") val anxiety: String,
+    @SerializedName("actions") val actions: List<ActionItem>? = emptyList()
 )
 
 // ===============================
@@ -244,8 +280,24 @@ interface ApiService {
         @Body request: CheckInRequest
     ): StressResponse
 
+    @retrofit2.http.PATCH("/checkin/{checkinId}/action/{actionId}/complete")
+    suspend fun completeAction(
+        @retrofit2.http.Path("checkinId") checkinId: Int,
+        @retrofit2.http.Path("actionId") actionId: String
+    ): GenericMessageResponse
+
     @GET("/history")
     suspend fun getHistory(): List<StressCheckInResponse>
+
+    @GET("/users/me/profile")
+    suspend fun getProfile(): ProfileResponse
+
+    @PUT("/users/me/profile")
+    suspend fun updateProfile(@Body profile: ProfileUpdate): ProfileResponse
+
+
+    @GET("/history/{id}")
+    suspend fun getHistoryById(@retrofit2.http.Path("id") id: Int): StressCheckInResponse
 
     @GET("/analytics/weekly")
     suspend fun getWeeklyAnalytics(): WeeklyAnalyticsResponse

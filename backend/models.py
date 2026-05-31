@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from database import Base
 from datetime import datetime
@@ -13,6 +13,9 @@ class User(Base):
     hashed_password = Column(String)
     age = Column(Integer)
     gender = Column(String)
+    mobile_number = Column(String, nullable=True)
+    dob = Column(String, nullable=True)
+    goal = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     reset_otp = Column(String, nullable=True)
@@ -40,6 +43,8 @@ class StressCheckIn(Base):
     score = Column(Integer)
 
     recommendation = Column(String)
+
+    actions = Column(JSON, default=list)
 
     is_escalated = Column(Boolean)
 

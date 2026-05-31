@@ -48,11 +48,19 @@ export interface CheckInRequest {
   body_feeling: string;
 }
 
+export interface ActionItem {
+  id: string;
+  title: string;
+  description: string;
+  is_done: boolean;
+}
+
 export interface AIAnalysisResult {
   stress_level: string;
   score: number;
   message: string;
   recommendation: string;
+  actions?: ActionItem[];
   is_escalated: boolean;
 }
 
@@ -62,6 +70,7 @@ export interface StressCheckInResponse {
   stress_level: string;
   score: number;
   recommendation: string;
+  actions?: ActionItem[];
   is_escalated: boolean;
   reasons?: string[];
 }
@@ -107,6 +116,24 @@ export interface FactorsResponse {
   top_exercise: string;
 }
 
+export interface DashboardSummaryResponse {
+  total_checkins: number;
+  latest_stress_score: number;
+  latest_sleep_duration: number;
+  latest_stress_category: string;
+  current_streak: number;
+  longest_streak: number;
+  today_checkins_count: number;
+  today_lowest_score: number;
+  avg_stress_this_week: number;
+  best_day_this_week: string;
+}
+
+export const getDashboardSummary = async (): Promise<DashboardSummaryResponse> => {
+  const response = await api.get('/dashboard/summary');
+  return response.data;
+};
+
 export const getHistory = async (): Promise<StressCheckInResponse[]> => {
   const response = await api.get('/history');
   return response.data;
@@ -138,7 +165,12 @@ export const submitCheckIn = async (data: CheckInRequest): Promise<AIAnalysisRes
 };
 
 export const getCheckinDetails = async (id: number): Promise<any> => {
-  const response = await api.get(`/checkin/${id}`);
+  const response = await api.get(`/history/${id}`);
+  return response.data;
+};
+
+export const completeAction = async (checkinId: number, actionId: string): Promise<any> => {
+  const response = await api.patch(`/checkin/${checkinId}/action/${actionId}/complete`);
   return response.data;
 };
 
@@ -168,3 +200,24 @@ export const resetPassword = async (data: { email: string, new_password: string 
 };
 
 export default api;
+
+
+export interface ProfileResponse {
+  first_name: string;
+  last_name: string;
+  mobile_number: string;
+  dob: string;
+  age: number;
+  gender: string;
+  goal: string;
+}
+
+export const getProfile = async (): Promise<ProfileResponse> => {
+  const response = await api.get('/users/me/profile');
+  return response.data;
+};
+
+export const updateProfile = async (profileData: ProfileResponse): Promise<ProfileResponse> => {
+  const response = await api.put('/users/me/profile', profileData);
+  return response.data;
+};
