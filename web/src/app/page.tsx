@@ -841,7 +841,7 @@ const renderHistory = () => {
             <span className="font-bold text-lg">Check-in</span>
           </button>
           
-          <button onClick={() => setActiveTab('Profile')} className={`flex items-center gap-4 p-4 rounded-2xl transition-all ${activeTab === 'Profile' ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}>
+          <button onClick={() => router.push('/profile')} className={`flex items-center gap-4 p-4 rounded-2xl transition-all ${activeTab === 'Profile' ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}>
             <User size={24} className={activeTab === 'Profile' ? 'fill-emerald-400/20' : ''} />
             <span className="font-bold text-lg">Profile</span>
           </button>
@@ -881,7 +881,7 @@ const renderHistory = () => {
           </button>
           
           <button 
-            onClick={() => setActiveTab('Profile')}
+            onClick={() => router.push('/profile')}
             className={`flex flex-col items-center gap-1 ${activeTab === 'Profile' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-400'}`}
           >
             <User size={24} className={activeTab === 'Profile' ? 'fill-emerald-400/20' : ''} />
