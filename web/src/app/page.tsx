@@ -14,7 +14,9 @@ import api, {
   getMonthlyAnalytics,
   getTrendsAnalytics,
   getFactorsAnalytics,
-  getDashboardSummary
+  getDashboardSummary,
+  completeAction,
+  ActionItem
 } from '@/lib/api';
 import axios from 'axios';
 import { 
@@ -35,10 +37,13 @@ import {
   Check,
   Moon,
   Smartphone,
-  Coffee,
-  Activity as RunIcon,
   Smile,
-  Briefcase
+  Briefcase,
+  Flame,
+  CheckCircle,
+  ArrowLeft,
+  AlertTriangle,
+  Info
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -108,7 +113,26 @@ export default function Dashboard() {
   const stressScore = dashboardSummary?.latest_stress_score ?? 0;
   const todayCheckinsCount = dashboardSummary?.today_checkins_count ?? 0;
   const currentStreak = dashboardSummary?.current_streak ?? 0;
-  const latestSleepDuration = dashboardSummary?.latest_sleep_duration ?? 0;
+  
+  // Calculate average or latest sleep
+  const latestSleepDuration = weeklyData?.days[weeklyData.days.length - 1]?.sleep_hours ?? 0;
+
+  const handleActionComplete = async (actionId: string) => {
+    if (!latestCheckIn) return;
+    try {
+      await completeAction(latestCheckIn.id, actionId);
+      // Optimistically update history state
+      const updatedHistory = [...history];
+      if (updatedHistory[0] && updatedHistory[0].actions) {
+        updatedHistory[0].actions = updatedHistory[0].actions.map(a => 
+          a.id === actionId ? { ...a, is_done: true } : a
+        );
+        setHistory(updatedHistory);
+      }
+    } catch (err) {
+      console.error("Failed to complete action", err);
+    }
+  };
 
   const greeting = new Date().getHours() < 12 ? 'Good Morning' : 'Good Evening';
 
@@ -588,76 +612,77 @@ const renderHistory = () => {
   const renderContent = () => {
     if (activeTab === 'Home') {
       return (
-        <div className="flex-1 overflow-y-auto px-6 py-12 space-y-8">
+        <div className="flex-1 overflow-y-auto px-6 py-12 flex flex-col min-h-full bg-[#111116]">
           
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-10 mt-2">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-emerald-500 rounded-full flex items-center justify-center text-[#050810] font-bold text-xl shadow-lg shadow-emerald-500/20">
-                C
+              <div className="w-[60px] h-[60px] rounded-full border border-emerald-400 flex flex-col items-center justify-center bg-[#172c29]">
+                <span className="text-emerald-400 font-bold text-2xl leading-none">C</span>
+                <span className="text-emerald-400 text-[6px] tracking-widest mt-0.5 uppercase">CortiSense</span>
               </div>
-              <div>
-                <p className="text-slate-400 text-sm font-medium">{greeting}</p>
-                <h1 className="text-white text-2xl font-bold truncate max-w-[150px]">{userEmail}</h1>
-              </div>
+              <p className="text-slate-300 text-[17px] tracking-wide">{greeting}</p>
             </div>
             
-            <button className="relative w-12 h-12 rounded-xl bg-slate-800/50 flex items-center justify-center text-emerald-400 hover:bg-slate-800 transition-colors">
-              <Bell size={24} />
-              {todayCheckinsCount === 0 && (
-                <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-[#050810]"></div>
-              )}
+            <button className="relative w-11 h-11 rounded-2xl bg-[#3a355d] flex items-center justify-center text-emerald-400 hover:bg-[#4a457d] transition-colors">
+              <Bell size={20} className="text-emerald-400" fill="#4ade80" />
             </button>
           </div>
 
-          {/* Stress Orb */}
-          <div className="flex flex-col items-center justify-center py-8">
+          {/* Stress Orb Container */}
+          <div className="flex-1 flex flex-col items-center justify-center py-6 relative w-full mb-12">
+            {/* Soft Glowing Gradient Background */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+               <div className="w-80 h-80 rounded-full bg-emerald-100/10 blur-3xl mix-blend-screen"></div>
+               <div className="absolute w-56 h-56 rounded-full bg-[#b5e0ca]/15 blur-2xl mix-blend-screen"></div>
+            </div>
+            
+            {/* The Text within the glow */}
             <div 
               onClick={() => setShowAlertScore(stressScore)}
-              className="relative w-64 h-64 rounded-full flex items-center justify-center shadow-2xl shadow-emerald-500/10 border-4 border-emerald-500/20 overflow-hidden cursor-pointer hover:scale-105 transition-transform"
+              className="relative z-10 flex flex-col items-center justify-center cursor-pointer"
             >
-              <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 to-cyan-500/20 animate-pulse rounded-full"></div>
-              <div className="relative z-10 flex flex-col items-center">
-                <span className="text-7xl font-bold text-white tracking-tighter">{stressScore}</span>
-                <span className="text-emerald-400 font-semibold tracking-widest uppercase text-sm mt-1">Score</span>
-              </div>
+                <span className="text-6xl font-serif text-white tracking-tight">{stressScore}</span>
+                <span className="text-slate-300 font-medium text-[15px] mt-1">{dashboardSummary?.latest_stress_category || 'High'}</span>
             </div>
           </div>
 
           {/* Main Action Button */}
-          <div className="pt-4 pb-2 w-full max-w-sm mx-auto">
+          <div className="w-full mb-8">
             <button 
               onClick={() => router.push('/checkin')}
-              className="w-full h-16 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg rounded-[24px] shadow-lg shadow-emerald-500/20 transition-all active:scale-95"
+              className="w-full h-16 bg-[#82c885] hover:bg-[#6eb171] text-white font-bold text-lg rounded-[24px] shadow-lg shadow-emerald-500/10 transition-all active:scale-95"
             >
               Daily Check-in
             </button>
           </div>
 
-          {/* Today's Stats (Mini) */}
-          <div className="grid grid-cols-3 gap-3 w-full max-w-sm mx-auto">
-            <div className="bg-slate-800/40 rounded-[20px] p-4 flex flex-col items-start justify-center">
-              <div className="text-emerald-500 mb-2">
-                <Calendar size={18} />
+          {/* Bottom Stats Row */}
+          <div className="grid grid-cols-3 gap-4 w-full">
+            <div className="bg-[#2c2c35] rounded-3xl p-5 flex flex-col items-start justify-center">
+              <div className="text-emerald-500 mb-3">
+                <CheckCircle size={20} />
               </div>
-              <p className="text-white font-extrabold text-lg">{todayCheckinsCount}</p>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">Check-ins</p>
+              <p className="text-white font-bold text-2xl mb-1">{todayCheckinsCount}</p>
+              <p className="text-slate-400 text-xs font-semibold">Check-ins</p>
             </div>
             
-            <div className="bg-slate-800/40 rounded-[20px] p-4 flex flex-col items-start justify-center">
-              <div className="text-emerald-500 mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+            <div className="bg-[#2c2c35] rounded-3xl p-5 flex flex-col items-start justify-center">
+              <div className="text-emerald-500 mb-3">
+                <Flame size={20} />
               </div>
-              <p className="text-white font-extrabold text-lg">{currentStreak}</p>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">Streak</p>
+              <p className="text-white font-bold text-2xl mb-1">{currentStreak}</p>
+              <p className="text-slate-400 text-xs font-semibold">Streak</p>
             </div>
             
-            <div className="bg-slate-800/40 rounded-[20px] p-4 flex flex-col items-start justify-center">
-              <div className="text-emerald-500 mb-2">
-                <Clock size={18} />
+            <div className="bg-[#2c2c35] rounded-3xl p-5 flex flex-col items-start justify-center">
+              <div className="text-emerald-500 mb-3">
+                <Moon size={20} />
               </div>
-              <p className="text-white font-extrabold text-lg">{latestSleepDuration}h</p>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">Sleep</p>
+              <p className="text-white font-bold text-xl tracking-tight mb-1">
+                 {latestSleepDuration ? `${Math.floor(latestSleepDuration)}h ${Math.round((latestSleepDuration % 1) * 60)}m` : '0h 0m'}
+              </p>
+              <p className="text-slate-400 text-xs font-semibold">Sleep</p>
             </div>
           </div>
 
@@ -742,75 +767,141 @@ const renderHistory = () => {
     else if (showAlertScore >= 70) stressLevel = 'High';
     else if (showAlertScore >= 40) stressLevel = 'Moderate';
 
-    const themeColors = {
-      Critical: 'text-rose-500 border-rose-500/20 bg-rose-500/10',
-      High: 'text-orange-500 border-orange-500/20 bg-orange-500/10',
-      Moderate: 'text-yellow-500 border-yellow-500/20 bg-yellow-500/10',
-      Low: 'text-emerald-400 border-emerald-500/20 bg-emerald-500/10'
-    };
-
-    const buttonColors = {
-      Critical: 'bg-rose-500 hover:bg-rose-600',
-      High: 'bg-orange-500 hover:bg-orange-600',
-      Moderate: 'bg-yellow-500 hover:bg-yellow-600 text-slate-900',
-      Low: 'bg-emerald-500 hover:bg-emerald-600 text-slate-900'
-    };
-
     const alerts = {
       Critical: { title: 'Critical Stress Alert', sub: 'Immediate action needed', mainText: 'Critical', recTitle: 'Severe stress detected', recDesc: 'Please seek immediate support, disconnect from work, and try a deep breathing exercise.' },
       High: { title: 'High Stress Alert', sub: 'Action recommended', mainText: 'High', recTitle: 'Elevated stress detected', recDesc: 'Take a 15-minute break and do a guided breathing session to lower your heart rate.' },
-      Moderate: { title: 'Moderate Stress Alert', sub: 'Stay mindful', mainText: 'Moderate', recTitle: 'Slightly elevated stress', recDesc: 'Stay mindful and remember to take short breaks throughout your day.' },
+      Moderate: { title: 'Moderate Stress', sub: 'Stay mindful', mainText: 'High', recTitle: 'Elevated', recDesc: 'Your stress levels are a bit higher than usual. Consider taking some time to relax.' },
       Low: { title: 'Doing Great!', sub: 'Keep it up', mainText: 'Low', recTitle: 'Excellent', recDesc: 'Your stress levels are well managed. Maintain your current healthy routine and mindfulness practices.' }
     };
 
     const data = alerts[stressLevel as keyof typeof alerts];
-    const colorClass = themeColors[stressLevel as keyof typeof themeColors];
-    const btnClass = buttonColors[stressLevel as keyof typeof buttonColors];
+    
+    // Hex colors for the SVG progress bar
+    let colorHex = '#4ade80'; // Low (Emerald)
+    let colorTextClass = 'text-emerald-400';
+    let alertIconColor = 'text-emerald-400';
+    let alertBgClass = 'bg-[#1a2d26] border-[#2c453b]';
+    
+    if (stressLevel === 'Critical') {
+      colorHex = '#f43f5e';
+      colorTextClass = 'text-rose-500';
+      alertIconColor = 'text-rose-500';
+      alertBgClass = 'bg-[#2d1b22] border-[#452831]';
+    } else if (stressLevel === 'High') {
+      colorHex = '#f97316';
+      colorTextClass = 'text-orange-500';
+      alertIconColor = 'text-orange-500';
+      alertBgClass = 'bg-[#2d221a] border-[#453123]';
+    } else if (stressLevel === 'Moderate') {
+      colorHex = '#ffe55c';
+      colorTextClass = 'text-[#ffe55c]';
+      alertIconColor = 'text-[#ffe55c]';
+      alertBgClass = 'bg-[#23221b] border-[#3a3721]';
+    }
+
+    // Default static actions if API doesn't provide them yet
+    const fallbackActions = [
+      { id: '1', title: 'Take a 15-minute short walk', is_done: false },
+      { id: '2', title: 'Drink a glass of water', is_done: false },
+      { id: '3', title: '5-Minute Deep Breathing', is_done: false },
+      { id: '4', title: 'Read a book for 10 minutes', is_done: false },
+      { id: '5', title: 'Listen to calm music', is_done: false }
+    ];
+
+    const displayActions = latestCheckIn?.actions?.length ? latestCheckIn.actions : fallbackActions;
 
     return (
-      <div className="flex-1 overflow-y-auto px-6 py-10 space-y-6 max-w-lg mx-auto w-full">
+      <div className="flex-1 overflow-y-auto px-5 py-8 space-y-5 bg-[#111116] min-h-full">
         <button 
           onClick={() => setShowAlertScore(null)}
-          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4"
+          className="text-white mb-2 ml-1"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-          Back
+          <ArrowLeft size={28} />
         </button>
 
-        {/* Alert Header */}
-        <div className={`p-4 rounded-2xl border flex items-center gap-4 ${colorClass}`}>
-          <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
-            {stressLevel === 'Low' ? <Calendar size={24} /> : <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>}
+        {/* Top Warning Card */}
+        <div className={`rounded-2xl p-4 flex items-center gap-4 border ${alertBgClass}`}>
+          <div className="w-12 h-12 rounded-xl bg-[#2b2a22] flex items-center justify-center flex-shrink-0">
+             {stressLevel === 'Low' ? <CheckCircle className={alertIconColor} size={24} /> : <AlertTriangle className={alertIconColor} size={24} />}
           </div>
           <div>
-            <h2 className="font-bold text-lg">{data.title}</h2>
-            <p className="opacity-80 text-sm">{data.sub}</p>
+            <h2 className="text-white font-bold text-[18px] tracking-wide leading-snug">{data.title}</h2>
+            <p className="text-slate-300 text-[15px] font-medium mt-0.5">{data.sub}</p>
           </div>
         </div>
 
-        {/* Main Score Card */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-8 flex flex-col items-center text-center">
-          <div className={`w-40 h-40 rounded-full border-[10px] flex flex-col items-center justify-center mb-6 ${colorClass.split(' ')[0].replace('text-', 'border-')}`}>
-            <span className="text-5xl font-extrabold text-white">{showAlertScore}</span>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Score</span>
-          </div>
-          <h3 className={`text-2xl font-bold ${colorClass.split(' ')[0]}`}>{data.mainText}</h3>
-          <p className="text-slate-400 text-sm mt-1">Current status</p>
+        {/* Main Score Circle Card */}
+        <div className="bg-[#1f1e26] rounded-[24px] p-8 flex flex-col items-center justify-center text-center shadow-lg">
+           <div className="relative w-52 h-52 mb-6 mt-2">
+             {/* Circular Progress Bar */}
+             <svg className="w-full h-full transform -rotate-90 drop-shadow-md" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#373740" strokeWidth="7" />
+                <circle 
+                  cx="50" 
+                  cy="50" 
+                  r="40" 
+                  fill="none" 
+                  stroke={colorHex} 
+                  strokeWidth="7" 
+                  strokeDasharray="251.2" 
+                  strokeDashoffset={251.2 * (1 - showAlertScore / 100)} 
+                  strokeLinecap="round" 
+                />
+             </svg>
+             <div className="absolute inset-0 flex flex-col items-center justify-center pb-1">
+               <span className="text-5xl font-bold text-white tracking-tight">{showAlertScore}</span>
+               <span className="text-[#8c8b96] text-xs font-bold tracking-wide mt-2">Stress Score</span>
+             </div>
+           </div>
+           <h3 className={`text-[22px] font-bold ${colorTextClass}`}>{data.mainText}</h3>
+           <p className="text-slate-300 text-[15px] mt-1 tracking-wide">{data.recTitle}</p>
         </div>
 
-        {/* Recommendation Card */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <svg className={colorClass.split(' ')[0]} xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-            <h4 className="font-bold text-white text-lg">{data.recTitle}</h4>
-          </div>
-          <p className="text-slate-400 text-sm leading-relaxed">{data.recDesc}</p>
+        {/* Recommendation Text Card */}
+        <div className="bg-[#1f1e26] rounded-[24px] p-6 border border-[#2a2933]">
+           <div className="flex items-center gap-3 mb-3">
+             <div className="w-6 h-6 rounded-full bg-[#ffe55c] flex items-center justify-center flex-shrink-0">
+                <Info size={14} className="text-[#111116] font-extrabold" />
+             </div>
+             <h4 className="text-white font-bold text-[17px] tracking-wide">{latestCheckIn?.recommendation ? 'Personalized Advice' : 'Stress Slightly Elevated'}</h4>
+           </div>
+           <p className="text-[#cbd5e1] text-[15px] leading-[1.6]">
+             {latestCheckIn?.recommendation || data.recDesc}
+           </p>
         </div>
 
-        {/* Action Button */}
-        <button className={`w-full py-4 rounded-2xl font-bold text-white mt-4 shadow-lg active:scale-95 transition-all ${btnClass}`}>
-          {stressLevel === 'Critical' || stressLevel === 'High' ? 'Start Emergency Breathing' : 'Start Breathing Exercise'}
-        </button>
+        {/* Recommended Actions List Card */}
+        <div className="bg-[#1f1e26] rounded-[24px] p-6 border border-[#2a2933] mb-6">
+           <h4 className="text-white font-bold text-[19px] tracking-wide mb-1">Recommended Actions</h4>
+           <p className="text-[#94a3b8] text-[14px] mb-6">Tasks based on your current stress score ({showAlertScore})</p>
+           
+           <div className="space-y-4">
+              {displayActions.map(action => (
+                <div key={action.id} className="flex items-center justify-between gap-4">
+                   <div className="flex items-center gap-4 flex-1">
+                      <div className="w-12 h-12 rounded-[14px] bg-[#312c4e] flex items-center justify-center flex-shrink-0">
+                         {/* Lotus/Leaf Icon */}
+                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 21C12 21 19.5 16.5 19.5 11.5C19.5 7.5 15.5 5.5 12 2C8.5 5.5 4.5 7.5 4.5 11.5C4.5 16.5 12 21 12 21Z" fill="#82c885"/>
+                            <path d="M12 11.5V21" stroke="#312c4e" strokeWidth="2" strokeLinecap="round"/>
+                         </svg>
+                      </div>
+                      <span className="text-white font-bold text-[15.5px] leading-snug pr-2">{action.title}</span>
+                   </div>
+                   <button 
+                     onClick={() => handleActionComplete(action.id)}
+                     disabled={action.is_done}
+                     className={`px-5 py-2 rounded-[20px] font-bold text-[13px] tracking-wide flex-shrink-0 transition-colors ${action.is_done ? 'bg-[#3f3f46] text-[#a1a1aa]' : 'bg-[#82c885] text-[#111116] hover:bg-[#6eb171]'}`}
+                   >
+                     Done
+                   </button>
+                </div>
+              ))}
+           </div>
+        </div>
+        
+        {/* Extra padding at bottom */}
+        <div className="h-6"></div>
       </div>
     );
   };
