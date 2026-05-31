@@ -37,6 +37,8 @@ import {
   Check,
   Moon,
   Smartphone,
+  Coffee,
+  Activity as RunIcon,
   Smile,
   Briefcase,
   Flame,
@@ -115,7 +117,7 @@ export default function Dashboard() {
   const currentStreak = dashboardSummary?.current_streak ?? 0;
   
   // Calculate average or latest sleep
-  const latestSleepDuration = weeklyData?.days[weeklyData.days.length - 1]?.sleep_hours ?? 0;
+  const latestSleepDuration = dashboardSummary?.latest_sleep_duration ?? 0;
 
   const handleActionComplete = async (actionId: string) => {
     if (!latestCheckIn) return;
