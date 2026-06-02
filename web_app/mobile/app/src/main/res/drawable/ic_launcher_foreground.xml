@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Face/Head Base (Medium-Dark Skin Tone) -->
+    <path
+        android:fillColor="#D2A679"
+        android:pathData="M54,50m-15,0a15,15 0,1 1,30 0a15,15 0,1 1,-30 0" />
+
+    <!-- Hair (Dark, based on photo) -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M39,45c-2,-10 6,-18 15,-18s17,8 15,18c0,2 -5,4 -7,2c-2,2 -5,4 -8,4s-6,-2 -8,-4c-2,2 -5,0 -7,-2z" />
+
+    <!-- Glasses (Circular black frames as in photo) -->
+    <path
+        android:strokeColor="#1A1A1A"
+        android:strokeWidth="0.8"
+        android:pathData="M44,50m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <path
+        android:strokeColor="#1A1A1A"
+        android:strokeWidth="0.8"
+        android:pathData="M64,50m-7,0a7,7 0,1 1,14 0a7,7 0,1 1,-14 0" />
+    <path
+        android:strokeColor="#1A1A1A"
+        android:strokeWidth="0.8"
+        android:pathData="M51,50h6" />
+
+    <!-- Mustache (Subtle as in photo) -->
+    <path
+        android:fillColor="#1A1A1A"
+        android:pathData="M48,58h12c0,1 -2,2 -6,2s-6,-1 -6,-2z" />
+
+    <!-- Shirt (Dark Green Button-up as in photo) -->
+    <path
+        android:fillColor="#1B3022"
+        android:pathData="M54,66c-18,0 -30,10 -30,20v10h60v-10c0,-10 -12,-20 -30,-20z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.1"
+        android:pathData="M54,66v26" />
+    <path
+        android:fillColor="#000000"
+        android:fillAlpha="0.2"
+        android:pathData="M50,66l4,4l4,-4z" />
+        
+</vector>

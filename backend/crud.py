@@ -40,3 +40,11 @@ def get_checkins(db: Session, user_id: int, skip: int = 0, limit: int = 100):
 
 def get_checkin_by_id(db: Session, checkin_id: int):
     return db.query(models.StressCheckIn).filter(models.StressCheckIn.id == checkin_id).first()
+
+def delete_user(db: Session, user_id: int):
+    # First, delete all checkins associated with the user
+    db.query(models.StressCheckIn).filter(models.StressCheckIn.user_id == user_id).delete()
+    # Next, delete the user
+    db.query(models.User).filter(models.User.id == user_id).delete()
+    db.commit()
+    return True

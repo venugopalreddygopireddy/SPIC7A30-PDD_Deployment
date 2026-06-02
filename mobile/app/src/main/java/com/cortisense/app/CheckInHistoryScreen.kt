@@ -32,7 +32,7 @@ fun CheckInHistoryScreen(
     onDetail: (Long) -> Unit,
     onBack: () -> Unit
 ) {
-    val history by viewModel.clinicalHistory.collectAsState(initial = emptyList())
+    val history by viewModel.history.collectAsState(initial = emptyList())
 
     Scaffold(
         topBar = {
@@ -69,11 +69,11 @@ fun CheckInHistoryScreen(
 }
 
 @Composable
-fun HistoryItemCard(item: StressCheckInEntity, onClick: () -> Unit) {
-    val color = when (item.stressLevel) {
-        "Low" -> Color(0xFF5E9B72)
-        "Moderate" -> Color(0xFFF5A623)
-        "High" -> Color(0xFFE8714A)
+fun HistoryItemCard(item: StressRecord, onClick: () -> Unit) {
+    val color = when (item.level) {
+        "Low Stress" -> Color(0xFF5E9B72)
+        "Moderate Stress" -> Color(0xFFF5A623)
+        "High Stress" -> Color(0xFFE8714A)
         "Critical" -> Color(0xFFD63E3E)
         else -> Color.Gray
     }
@@ -99,14 +99,21 @@ fun HistoryItemCard(item: StressCheckInEntity, onClick: () -> Unit) {
             
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(item.stressLevel, fontWeight = FontWeight.Bold, color = color, fontSize = 16.sp)
+                    Text(item.level, fontWeight = FontWeight.Bold, color = color, fontSize = 16.sp)
                     Spacer(Modifier.width(8.dp))
                     Text("•", color = Color.Gray)
                     Spacer(Modifier.width(8.dp))
-                    Text(item.date, fontSize = 12.sp, color = Color.Gray)
+                    
+                    val formattedDate = try {
+                        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date(item.timestamp))
+                    } catch (e: Exception) { "" }
+                    
+                    Text(formattedDate, fontSize = 12.sp, color = Color.Gray)
                 }
+                
+                val aiRec = item.reasons.find { it.startsWith("AI Recommendation:") }?.replace("AI Recommendation: ", "") ?: "No recommendation available"
                 Text(
-                    text = item.recommendation,
+                    text = aiRec,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

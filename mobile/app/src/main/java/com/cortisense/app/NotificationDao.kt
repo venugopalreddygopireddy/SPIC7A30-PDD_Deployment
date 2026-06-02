@@ -5,8 +5,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NotificationDao {
-    @Query("SELECT * FROM notifications WHERE userEmail = :email ORDER BY timestamp DESC")
-    fun getNotificationsForUser(email: String): Flow<List<NotificationEntity>>
+    @Query("SELECT * FROM notifications WHERE userEmail = :email AND timestamp >= :cutoff ORDER BY timestamp DESC")
+    fun getNotificationsForUser(email: String, cutoff: Long): Flow<List<NotificationEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertNotification(notification: NotificationEntity): Long

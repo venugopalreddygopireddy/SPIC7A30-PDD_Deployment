@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.env
+
+# Android
+.gradle/
+build/
+app/build/
+*.iml
+.idea/
+local.properties
+.DS_Store
+
+# Web/Node
+node_modules/
+dist/
+.next/
+out/
+build/
+
+# Large files
+*.zip
+*.tar.gz
+*.hprof

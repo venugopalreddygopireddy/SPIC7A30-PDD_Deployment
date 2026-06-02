@@ -321,7 +321,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadNotifications(email: String) {
         viewModelScope.launch {
-            database.notificationDao().getNotificationsForUser(email).collect {
+            val calendar = java.util.Calendar.getInstance()
+            calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+            calendar.set(java.util.Calendar.MINUTE, 0)
+            calendar.set(java.util.Calendar.SECOND, 0)
+            calendar.set(java.util.Calendar.MILLISECOND, 0)
+            val midnight = calendar.timeInMillis
+            
+            database.notificationDao().getNotificationsForUser(email, midnight).collect {
                 _notifications.value = it
                 _unreadNotificationsCount.value = it.count { notif -> !notif.isRead }
             }
@@ -563,6 +570,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 preferenceManager.setLoggedIn(true)
                 currentUserEmail = email
                 _userEmail.value = email
+                fetchProfile()
                 fetchAnalytics()
                 fetchHistory()
                 fetchDashboardSummary()
@@ -669,6 +677,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     response.mobile_number ?: "", 
                     imageUri
                 )
+                
+                NotificationHelper.showNotification(
+                    context = getApplication<Application>(),
+                    channelId = NotificationHelper.CHANNEL_ENGAGEMENT,
+                    notificationId = (1000..9999).random(),
+                    title = "Profile Updated",
+                    message = "Your profile information has been successfully updated."
+                )
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -718,6 +734,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         viewModelScope.launch {
+            database.clearAllTables()
             preferenceManager.saveJwtToken("")
             preferenceManager.setLoggedIn(false)
             preferenceManager.saveRegistration("", "", "")
@@ -808,10 +825,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 
                 val finalScore = response.score
                 val finalLevel = when {
-                    finalScore < 40 -> "Low Stress"
-                    finalScore < 70 -> "Moderate Stress"
-                    else -> "High Stress"
+                    finalScore <= 25 -> "Low Stress"
+                    finalScore <= 50 -> "Moderate Stress"
+                    finalScore <= 75 -> "High Stress"
+                    else -> "Critical Stress"
                 }
+                
+                // Dynamic 3D Breakdown (out of 12 each)
+                val cog = (when(checkInWorkload) { "Extreme"->4; "Heavy"->3; "Moderate"->2; "Normal"->1; else->0 } +
+                           when { checkInWorkHours > 10 -> 4; checkInWorkHours > 8 -> 3; checkInWorkHours > 6 -> 2; else -> 1 } +
+                           when { checkInScreenTime > 8 -> 4; checkInScreenTime > 6 -> 3; checkInScreenTime > 4 -> 2; else -> 1 })
+                
+                val emo = (when(checkInMood) { "Depressed", "Anxious"->4; "Sad"->3; "Neutral"->1; else->0 } +
+                           when(checkInAnxiety) { "Extreme"->4; "High"->3; "Moderate"->2; "Mild"->1; else->0 } +
+                           when(checkInSocialInteractions) { 1->4; 2->3; 3->2; 4->1; else->0 })
+                           
+                val phys = (when(checkInSleepQuality) { 1->4; 2->3; 3->2; 4->1; else->0 } +
+                            when(checkInPhysicalActivity) { 1->4; 2->3; 3->2; 4->1; else->0 } +
+                            when(checkInBodyFeeling) { "Burnout"->4; "Exhausted"->3; "Tired"->2; "Normal"->1; else->0 })
+                
+                cognitiveScore = cog.coerceIn(0, 12)
+                emotionalScore = emo.coerceIn(0, 12)
+                physicalScore = phys.coerceIn(0, 12)
                 
                 stressScore = finalScore
                 stressLevel = finalLevel
@@ -874,6 +909,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 fetchAnalytics()
                 fetchHistory()
                 fetchDashboardSummary()
+                
+                NotificationHelper.showNotification(
+                    context = getApplication<Application>(),
+                    channelId = NotificationHelper.CHANNEL_CHECKIN,
+                    notificationId = (1000..9999).random(),
+                    title = "Check-In Logged!",
+                    message = "Your check-in has been saved. Stress Level: $finalLevel"
+                )
+                
                 onSuccess(response)
             } catch (e: Exception) {
                 errorMessage = "API Error: ${e.message}"
@@ -1188,11 +1232,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             time = sdf.parse(timeStr)?.time ?: System.currentTimeMillis()
                         } catch (e: Exception) {}
 
+                        val strictLevel = when {
+                            response.score <= 25 -> "Low Stress"
+                            response.score <= 50 -> "Moderate Stress"
+                            response.score <= 75 -> "High Stress"
+                            else -> "Critical Stress"
+                        }
+
                         StressRecord(
                             id = response.id.toLong(),
                             userEmail = currentUserEmail,
                             score = response.score,
-                            level = response.stressLevel,
+                            level = strictLevel,
                             reasons = factors,
                             timestamp = time,
                             cognitiveScore = response.score / 3,
@@ -1201,6 +1252,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                     _history.value = mappedRecords
+                    updateDashboardMetrics(mappedRecords)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

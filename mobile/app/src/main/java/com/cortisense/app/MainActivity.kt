@@ -32,6 +32,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
@@ -1137,7 +1140,7 @@ fun SplashScreenPreview() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun CustomTextField(
     label: String,
@@ -1146,9 +1149,41 @@ fun CustomTextField(
     placeholder: String = "",
     isPassword: Boolean = false,
     readOnly: Boolean = false,
+    keyboardOptions: androidx.compose.foundation.text.KeyboardOptions = androidx.compose.foundation.text.KeyboardOptions.Default,
+    autofillTypes: List<androidx.compose.ui.autofill.AutofillType> = emptyList(),
     modifier: Modifier = Modifier.fillMaxWidth()
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
+
+    val autofill = androidx.compose.ui.platform.LocalAutofill.current
+    val autofillNode = remember(autofillTypes) {
+        if (autofillTypes.isNotEmpty()) {
+            androidx.compose.ui.autofill.AutofillNode(
+                autofillTypes = autofillTypes,
+                onFill = { onValueChange(it) }
+            )
+        } else null
+    }
+
+    val autofillTree = androidx.compose.ui.platform.LocalAutofillTree.current
+    LaunchedEffect(autofillNode) {
+        if (autofillNode != null) {
+            autofillTree += autofillNode
+        }
+    }
+
+    val finalModifier = if (autofillNode != null && autofill != null) {
+        modifier
+            .onGloballyPositioned {
+                autofillNode.boundingBox = it.boundsInWindow()
+            }
+            .onFocusChanged { focusState ->
+                if (autofill != null && autofillNode != null) {
+                    if (focusState.isFocused) autofill.requestAutofillForNode(autofillNode)
+                    else autofill.cancelAutofillForNode(autofillNode)
+                }
+            }
+    } else modifier
 
     OutlinedTextField(
         value = value,
@@ -1156,8 +1191,9 @@ fun CustomTextField(
         label = { Text(label) },
         placeholder = { if (placeholder.isNotEmpty()) Text(placeholder) },
         singleLine = true,
-        modifier = modifier,
+        modifier = finalModifier,
         readOnly = readOnly,
+        keyboardOptions = keyboardOptions,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
@@ -1250,7 +1286,12 @@ fun LoginScreen(
                     email = it
                     errorMessage = null
                 },
-                placeholder = "john@example.com"
+                placeholder = "john@example.com",
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Email,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Next
+                ),
+                autofillTypes = listOf(androidx.compose.ui.autofill.AutofillType.EmailAddress)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -1262,7 +1303,12 @@ fun LoginScreen(
                     password = it
                     errorMessage = null
                 },
-                isPassword = true
+                isPassword = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                ),
+                autofillTypes = listOf(androidx.compose.ui.autofill.AutofillType.Password)
             )
 
             if (errorMessage != null) {
@@ -1463,10 +1509,12 @@ fun ForgotPasswordScreen(
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun SignupScreen(
     backendError: String? = null,
     isLoading: Boolean = false,
+    viewModel: MainViewModel? = null,
     onCreateAccount: (String, String, String) -> Unit, 
     onSignInClick: () -> Unit
 ) {
@@ -1477,6 +1525,9 @@ fun SignupScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    val currentLanguage by (viewModel?.language ?: kotlinx.coroutines.flow.MutableStateFlow("en")).collectAsState()
+    var expandedLanguageMenu by remember { mutableStateOf(false) }
     
     LaunchedEffect(backendError) {
         if (backendError != null) {
@@ -1555,6 +1606,58 @@ fun SignupScreen(
                 onValueChange = { confirmPassword = it; errorMessage = null },
                 isPassword = true
             )
+
+            val allLanguages = listOf(
+                "English" to "en",
+                "తెలుగు" to "te",
+                "हिंदी" to "hi",
+                "Español" to "es",
+                "Français" to "fr",
+                "Deutsch" to "de",
+                "日本語" to "ja",
+                "한국어" to "ko",
+                "中文" to "zh",
+                "Português" to "pt",
+                "Italiano" to "it",
+                "Русский" to "ru",
+                "العربية" to "ar"
+            )
+            val selectedLangName = allLanguages.find { it.second == currentLanguage }?.first ?: "English"
+
+            Spacer(modifier = Modifier.height(16.dp))
+            androidx.compose.material3.ExposedDropdownMenuBox(
+                expanded = expandedLanguageMenu,
+                onExpandedChange = { expandedLanguageMenu = !expandedLanguageMenu },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = selectedLangName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.language)) },
+                    trailingIcon = { androidx.compose.material3.ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedLanguageMenu) },
+                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = tealColor,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                    )
+                )
+                ExposedDropdownMenu(
+                    expanded = expandedLanguageMenu,
+                    onDismissRequest = { expandedLanguageMenu = false }
+                ) {
+                    allLanguages.forEach { (langName, langCode) ->
+                        androidx.compose.material3.DropdownMenuItem(
+                            text = { Text(langName) },
+                            onClick = {
+                                viewModel?.setLanguage(langCode)
+                                expandedLanguageMenu = false
+                            }
+                        )
+                    }
+                }
+            }
 
             if (errorMessage != null) {
                 Text(
@@ -3577,13 +3680,13 @@ fun WeeklyReportScreen(viewModel: MainViewModel) {
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val tealColor = MaterialTheme.colorScheme.primary
-    val weekly by viewModel.weeklyAnalytics.collectAsState()
+    val history by viewModel.weeklyHistory.collectAsState()
     
-    val avgWeekly = weekly?.avgScore ?: 0
-    val checkIns = weekly?.totalCheckins ?: 0
-    val lowDays = weekly?.distribution?.get("low") ?: 0
-    val moderateDays = weekly?.distribution?.get("moderate") ?: 0
-    val highDays = weekly?.distribution?.get("high") ?: 0
+    val avgWeekly = if (history.isNotEmpty()) history.map { it.score }.average().toInt() else 0
+    val checkIns = history.size
+    val lowDays = history.count { it.level.contains("low", ignoreCase = true) }
+    val moderateDays = history.count { it.level.contains("moderate", ignoreCase = true) }
+    val highDays = history.count { it.level.contains("high", ignoreCase = true) || it.level.contains("critical", ignoreCase = true) }
 
     Column(
         modifier = Modifier
@@ -3610,8 +3713,8 @@ fun WeeklyReportScreen(viewModel: MainViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val highestScore = weekly?.highestScore ?: 0
-        val lowestScoreWeekly = weekly?.lowestScore ?: 0
+        val highestScore = history.maxOfOrNull { it.score } ?: 0
+        val lowestScoreWeekly = history.minOfOrNull { it.score } ?: 0
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.CheckCircle, iconTint = tealColor, title = "Check-ins", value = "$checkIns")
             InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.TrendingUp, iconTint = Color(0xFFFF4B4B), title = "Highest Score", value = "$highestScore")
@@ -3648,13 +3751,13 @@ fun MonthlyReportScreen(viewModel: MainViewModel) {
     val textColor = MaterialTheme.colorScheme.onBackground
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val tealColor = MaterialTheme.colorScheme.primary
-    val monthly by viewModel.monthlyAnalytics.collectAsState()
+    val history by viewModel.monthlyHistory.collectAsState()
     
-    val avgMonthly = monthly?.avgScore ?: 0
-    val checkIns = monthly?.totalCheckins ?: 0
-    val lowDays = monthly?.distribution?.get("low") ?: 0
-    val moderateDays = monthly?.distribution?.get("moderate") ?: 0
-    val highDays = monthly?.distribution?.get("high") ?: 0
+    val avgMonthly = if (history.isNotEmpty()) history.map { it.score }.average().toInt() else 0
+    val checkIns = history.size
+    val lowDays = history.count { it.level.contains("low", ignoreCase = true) }
+    val moderateDays = history.count { it.level.contains("moderate", ignoreCase = true) }
+    val highDays = history.count { it.level.contains("high", ignoreCase = true) || it.level.contains("critical", ignoreCase = true) }
 
     Column(
         modifier = Modifier
@@ -3685,8 +3788,8 @@ fun MonthlyReportScreen(viewModel: MainViewModel) {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val highestScore = monthly?.calendarActivity?.values?.maxOrNull() ?: 0
-        val lowestScoreMonthly = monthly?.calendarActivity?.values?.minOrNull() ?: 0
+        val highestScore = history.maxOfOrNull { it.score } ?: 0
+        val lowestScoreMonthly = history.minOfOrNull { it.score } ?: 0
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.Default.CheckCircle, iconTint = tealColor, title = "Check-ins", value = "$checkIns")
             InfoSquareCard(modifier = Modifier.weight(1f), icon = Icons.AutoMirrored.Filled.TrendingDown, iconTint = tealColor, title = "Lowest Score", value = "$lowestScoreMonthly")
@@ -3773,6 +3876,53 @@ fun FactorBreakdownScreen(viewModel: MainViewModel) {
 
     val lastCheckin = history.maxByOrNull { it.timestamp }
     val lastCheckinReasons = lastCheckin?.reasons ?: emptyList()
+    
+    var sleepVal = factors?.sleepAvg ?: 0.0
+    var screenVal = factors?.screenTimeAvg ?: 0.0
+    var caffeineVal = factors?.caffeineAvg ?: 0.0
+    var activityVal = 1
+    var moodStr = factors?.topMood ?: "Neutral"
+    var topWorkload = factors?.topWorkload ?: "Light"
+
+    lastCheckinReasons.forEach { reason ->
+        try {
+            if (reason.startsWith("Sleep Duration:")) {
+                sleepVal = reason.substringAfter("Sleep Duration:").substringBefore("hrs").trim().toDoubleOrNull() ?: sleepVal
+            } else if (reason.startsWith("Screen Time:")) {
+                screenVal = reason.substringAfter("Screen Time:").substringBefore("hrs").trim().toDoubleOrNull() ?: screenVal
+            } else if (reason.startsWith("Physical Activity:")) {
+                val mins = reason.substringAfter("Physical Activity:").substringBefore("min").trim().toIntOrNull() ?: 0
+                activityVal = when {
+                    mins < 15 -> 1
+                    mins < 30 -> 2
+                    mins < 45 -> 3
+                    mins < 60 -> 4
+                    else -> 5
+                }
+            } else if (reason.startsWith("Mood:")) {
+                moodStr = reason.substringAfter("Mood:").trim()
+            } else if (reason.startsWith("Workload:")) {
+                topWorkload = reason.substringAfter("Workload:").trim()
+            }
+        } catch (e: Exception) {}
+    }
+
+    val sleepPercent = if (sleepVal <= 0.0) 0 else ((sleepVal / 8.0) * 100).toInt().coerceIn(0, 100)
+    val screenPercent = if (screenVal <= 4.0) 100 else ((4.0 / screenVal) * 100).toInt().coerceIn(0, 100)
+    val caffeinePercent = if (caffeineVal <= 2.0) 100 else ((2.0 / caffeineVal) * 100).toInt().coerceIn(0, 100)
+    val activityPercent = ((activityVal / 5.0) * 100).toInt().coerceIn(0, 100)
+    
+    val moodPercent = when {
+        moodStr.contains("Positive", ignoreCase = true) || moodStr.contains("Happy", ignoreCase = true) -> 100
+        moodStr.contains("Neutral", ignoreCase = true) || moodStr.contains("Okay", ignoreCase = true) -> 60
+        else -> 20
+    }
+    
+    val workloadPercent = when {
+        topWorkload.contains("Light", ignoreCase = true) -> 100
+        topWorkload.contains("Moderate", ignoreCase = true) -> 60
+        else -> 20
+    }
 
     Column(
         modifier = Modifier
@@ -3798,12 +3948,12 @@ fun FactorBreakdownScreen(viewModel: MainViewModel) {
                     Text(text = stringResource(R.string.extracted_contribution_analysi), fontWeight = FontWeight.Bold, color = textColor)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(text = stringResource(R.string.extracted_each_factor_s_impact), fontSize = 12.sp, color = subtitleColor)
+                Text(text = "Each factor's impact based on your latest check-in", fontSize = 12.sp, color = subtitleColor)
                 
                 Spacer(modifier = Modifier.height(24.dp))
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (factors == null) {
+            if (lastCheckin == null) {
                 Text(
                     text = "No check-ins yet to analyze.",
                     fontSize = 14.sp,
@@ -3811,12 +3961,12 @@ fun FactorBreakdownScreen(viewModel: MainViewModel) {
                     modifier = Modifier.padding(vertical = 16.dp)
                 )
             } else {
-                FactorItem(Icons.Default.NightsStay, "Sleep Duration", "${factors!!.sleepAvg} hrs avg", 100, tealColor)
-                FactorItem(Icons.Default.PhoneAndroid, "Screen Time", "${factors!!.screenTimeAvg} hrs avg", 100, tealColor)
-                FactorItem(Icons.Default.Coffee, "Caffeine Intake", "${factors!!.caffeineAvg} cups avg", 100, tealColor)
-                FactorItem(Icons.Default.DirectionsRun, "Physical Activity", "${factors!!.physicalActivityAvg} hrs avg", 100, tealColor)
-                FactorItem(Icons.Default.Mood, "Top Mood", factors!!.topMood, 100, Color(0xFFFFD700))
-                FactorItem(Icons.Default.Work, "Top Workload", factors!!.topWorkload, 100, Color(0xFFFF4B4B))
+                FactorItem(Icons.Default.NightsStay, "Sleep Quality", "$sleepVal hrs (Latest)", sleepPercent, tealColor)
+                FactorItem(Icons.Default.PhoneAndroid, "Screen Time Wellness", "$screenVal hrs (Latest)", screenPercent, tealColor)
+                FactorItem(Icons.Default.Coffee, "Caffeine Management", "${caffeineVal.toInt()} cups (Latest)", caffeinePercent, tealColor)
+                FactorItem(Icons.Default.DirectionsRun, "Physical Activity", "Level $activityVal (Latest)", activityPercent, tealColor)
+                FactorItem(Icons.Default.Mood, "Mood State", moodStr, moodPercent, Color(0xFFFFD700))
+                FactorItem(Icons.Default.Work, "Workload Balance", topWorkload, workloadPercent, Color(0xFFFF4B4B))
             }
         }
             }
@@ -5079,11 +5229,11 @@ fun ProfileMainScreenContent(
         Spacer(modifier = Modifier.height(32.dp))
 
         // --- Check-in History / Clinical History ---
-        val clinicalHistory by viewModel.clinicalHistory.collectAsState(initial = emptyList())
+        val history by viewModel.history.collectAsState(initial = emptyList())
         
         ProfileMenuItem(
             icon = Icons.Default.History,
-            title = "Check-in & Clinical History (${clinicalHistory.size})",
+            title = "Check-in & Clinical History (${history.size})",
             onClick = onClinicalHistory
         )
         Spacer(modifier = Modifier.height(24.dp))

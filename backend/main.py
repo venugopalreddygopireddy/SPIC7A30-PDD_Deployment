@@ -313,6 +313,19 @@ def update_user_profile(
 
     return db_user
 
+@app.delete("/users/me")
+def delete_user_account(
+    db: Session = Depends(get_db),
+    db_user: models.User = Depends(get_current_user)
+):
+    try:
+        crud.delete_user(db, db_user.id)
+        return {"message": "Account deleted successfully"}
+    except Exception as e:
+        logger.error(f"Error deleting account: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to delete account")
+
 # ============================================
 # CHECK-IN API
 # ============================================
@@ -453,9 +466,29 @@ def receive_checkin(
 
     confidence = float(np.max(prediction))
 
-    stress_level = str(target_encoder.inverse_transform(
-        [predicted_class]
-    )[0])
+    raw_level = str(target_encoder.inverse_transform([predicted_class])[0])
+    
+    # Map confidence to a score within the correct range
+    # Highest confidence in "Low" -> lowest score (near 0)
+    # Highest confidence in "Critical" -> highest score (near 100)
+    
+    if raw_level == "Low":
+        stress_level = "Low Stress"
+        # 0 to 25. High confidence -> closer to 0
+        score_val = max(0, min(25, int(25 - (confidence * 25))))
+    elif raw_level == "Moderate":
+        stress_level = "Moderate Stress"
+        # 26 to 50. High confidence -> closer to 38 (middle) or just map it 26-50
+        # Let's say higher confidence -> closer to 50 (worse stress than Low)
+        score_val = max(26, min(50, int(26 + (confidence * 24))))
+    elif raw_level == "High":
+        stress_level = "High Stress"
+        # 51 to 75
+        score_val = max(51, min(75, int(51 + (confidence * 24))))
+    else:
+        stress_level = "Critical Stress"
+        # 76 to 100
+        score_val = max(76, min(100, int(76 + (confidence * 24))))
 
     # ========================================
     # RECOMMENDATIONS
@@ -463,16 +496,16 @@ def receive_checkin(
 
     recommendations = {
 
-        "Low":
+        "Low Stress":
             "Maintain your current healthy routines and continue mindfulness practices.",
 
-        "Moderate":
+        "Moderate Stress":
             "Moderate stress detected. Take regular breaks and improve sleep quality.",
 
-        "High":
+        "High Stress":
             "High stress detected. Reduce workload and prioritize mental recovery.",
 
-        "Critical":
+        "Critical Stress":
             "Critical stress detected. Seek immediate support and take complete rest."
     }
 
@@ -482,21 +515,21 @@ def receive_checkin(
         def add(title, desc):
             actions.append({"id": uuid.uuid4().hex[:8], "title": title, "description": desc, "is_done": False})
         
-        if level == "Low":
+        if level == "Low Stress":
             add("Maintain Routine", "Keep up your current healthy habits and sleep schedule.")
             add("Hydration Check", "Drink a glass of water to stay hydrated.")
             add("Light Stretching", "Do a quick 2-minute stretch to keep muscles relaxed.")
-        elif level == "Moderate":
+        elif level == "Moderate Stress":
             add("Box Breathing", "Inhale 4s, hold 4s, exhale 4s, hold 4s. Repeat for 2 minutes.")
             add("Short Walk", "Take a 5-minute walk away from your desk or workspace.")
             add("Mindful Break", "Close your eyes and focus on your breath for 3 minutes.")
             add("Hydration Boost", "Drink a large glass of water immediately.")
-        elif level == "High":
+        elif level == "High Stress":
             add("Immediate Disconnect", "Step away from all screens for at least 10 minutes.")
             add("Deep Relaxation", "Perform a 10-minute guided meditation or deep relaxation.")
             add("Workload Reduction", "Identify one non-urgent task on your list and postpone it.")
             add("Social Connection", "Reach out to a friend or colleague for a quick chat.")
-        elif level == "Critical":
+        elif level == "Critical Stress":
             add("Stop Working", "Immediately stop your current task and take a full break.")
             add("Grounding Exercise", "Name 5 things you can see, 4 you can touch, 3 you can hear, 2 you can smell, 1 you can taste.")
             add("Seek Support", "Consider talking to a professional or a trusted support person.")
@@ -513,7 +546,7 @@ def receive_checkin(
 
         "stress_level": stress_level,
 
-        "score": int(confidence * 100),
+        "score": score_val,
 
         "message":
             f"AI Stress Analysis Complete: {stress_level} detected.",
@@ -641,8 +674,9 @@ from collections import Counter
 @app.get("/analytics/weekly", response_model=schemas.WeeklyAnalyticsResponse)
 def get_weekly_analytics(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     checkins = crud.get_checkins(db, user_id=current_user.id, limit=1000)
-    week_ago = datetime.utcnow() - timedelta(days=7)
-    recent = [c for c in checkins if c.timestamp.replace(tzinfo=None) >= week_ago]
+    now = datetime.utcnow()
+    start_of_week = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    recent = [c for c in checkins if c.timestamp.replace(tzinfo=None) >= start_of_week]
     
     if not recent:
         return {"avg_score": 0, "highest_score": 0, "lowest_score": 0, "total_checkins": 0, "distribution": {"low": 0, "moderate": 0, "high": 0}}
@@ -668,8 +702,9 @@ def get_weekly_analytics(db: Session = Depends(get_db), current_user: models.Use
 @app.get("/analytics/monthly", response_model=schemas.MonthlyAnalyticsResponse)
 def get_monthly_analytics(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     checkins = crud.get_checkins(db, user_id=current_user.id, limit=1000)
-    month_ago = datetime.utcnow() - timedelta(days=30)
-    recent = [c for c in checkins if c.timestamp.replace(tzinfo=None) >= month_ago]
+    now = datetime.utcnow()
+    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    recent = [c for c in checkins if c.timestamp.replace(tzinfo=None) >= start_of_month]
     
     if not recent:
         return {"avg_score": 0, "total_checkins": 0, "distribution": {"low": 0, "moderate": 0, "high": 0}, "calendar_activity": {}}

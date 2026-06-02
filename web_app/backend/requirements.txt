@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+pandas
+scikit-learn
+onnxruntime
+numpy
+joblib
+sqlalchemy
+psycopg2-binary
+passlib[bcrypt]
+bcrypt==4.0.1
+pyjwt
+python-multipart
+sendgrid
