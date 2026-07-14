@@ -280,6 +280,12 @@ def home():
         "message": "CortiSense AI + PostgreSQL Backend Running"
     }
 
+@app.get("/view-users")
+def view_users(db: Session = Depends(get_db)):
+    # Very simple query to fetch users and return them as JSON so we can check the database!
+    users = crud.get_users(db, skip=0, limit=100)
+    return [{"id": u.id, "name": f"{u.first_name} {u.last_name}", "email": u.email, "age": u.age} for u in users]
+
 
 
 # ============================================
