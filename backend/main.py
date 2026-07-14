@@ -282,8 +282,8 @@ def home():
 
 @app.get("/view-users")
 def view_users(db: Session = Depends(get_db)):
-    # Very simple query to fetch users and return them as JSON so we can check the database!
-    users = crud.get_users(db, skip=0, limit=100)
+    # Very simple query to fetch users directly and return them as JSON
+    users = db.query(models.User).limit(100).all()
     return [{"id": u.id, "name": f"{u.first_name} {u.last_name}", "email": u.email, "age": u.age} for u in users]
 
 
