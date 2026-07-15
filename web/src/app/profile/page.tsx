@@ -18,6 +18,7 @@ export default function ProfileScreen() {
   const [age, setAge] = useState<number>(0);
   const [gender, setGender] = useState('');
   const [goal, setGoal] = useState('');
+  const [profileImage, setProfileImage] = useState<string | undefined>('');
 
   // Dashboard state
   const [dashboard, setDashboard] = useState<DashboardSummaryResponse | null>(null);
@@ -52,6 +53,7 @@ export default function ProfileScreen() {
       setAge(profileData.age || 0);
       setGender(profileData.gender || '');
       setGoal(profileData.goal || '');
+      setProfileImage(profileData.profile_image || '');
       
       setDashboard(dashboardData);
     } catch (e) {
@@ -91,7 +93,8 @@ export default function ProfileScreen() {
         dob: dob,
         age: age,
         gender: gender,
-        goal: goal
+        goal: goal,
+        profile_image: profileImage
       });
       alert('Profile saved successfully!');
       setIsEditing(false);
@@ -101,6 +104,43 @@ export default function ProfileScreen() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 400;
+        const MAX_HEIGHT = 400;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        setProfileImage(dataUrl);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleLogout = () => {
@@ -133,10 +173,20 @@ export default function ProfileScreen() {
           </div>
 
           <div className="flex flex-col items-center mb-8 mt-2">
-            <div className="w-24 h-24 bg-emerald-500 rounded-3xl flex items-center justify-center text-[#050810] font-bold text-4xl mb-4 shadow-lg shadow-emerald-500/20">
-              {firstName ? firstName.charAt(0).toUpperCase() : (userEmail ? userEmail.charAt(0).toUpperCase() : 'U')}
-            </div>
-            {fullName && <h2 className="text-xl font-bold text-white mb-1">{fullName}</h2>}
+            <label className="cursor-pointer relative group">
+              <div className="w-24 h-24 bg-emerald-500 rounded-3xl flex items-center justify-center text-[#050810] font-bold text-4xl shadow-lg shadow-emerald-500/20 overflow-hidden">
+                {profileImage ? (
+                  <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  firstName ? firstName.charAt(0).toUpperCase() : (userEmail ? userEmail.charAt(0).toUpperCase() : 'U')
+                )}
+              </div>
+              <div className="absolute inset-0 bg-black/40 rounded-3xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-white text-xs font-bold">Upload</span>
+              </div>
+              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+            </label>
+            {fullName && <h2 className="text-xl font-bold text-white mb-1 mt-4">{fullName}</h2>}
             <p className="text-slate-400 text-sm font-medium">{userEmail}</p>
           </div>
 
@@ -251,8 +301,12 @@ export default function ProfileScreen() {
         
         {/* HEADER */}
         <div className="flex flex-col items-center mb-8 mt-2">
-          <div className="w-24 h-24 bg-emerald-500 rounded-3xl flex items-center justify-center text-[#050810] font-bold text-4xl mb-4 shadow-lg shadow-emerald-500/20">
-            {firstName ? firstName.charAt(0).toUpperCase() : (userEmail ? userEmail.charAt(0).toUpperCase() : 'U')}
+          <div className="w-24 h-24 bg-emerald-500 rounded-3xl flex items-center justify-center text-[#050810] font-bold text-4xl mb-4 shadow-lg shadow-emerald-500/20 overflow-hidden">
+            {profileImage ? (
+              <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              firstName ? firstName.charAt(0).toUpperCase() : (userEmail ? userEmail.charAt(0).toUpperCase() : 'U')
+            )}
           </div>
           {fullName && <h2 className="text-xl font-bold text-white mb-1">{fullName}</h2>}
           <p className="text-slate-400 text-sm font-medium">{userEmail}</p>

@@ -171,7 +171,8 @@ data class ProfileResponse(
     val dob: String?,
     val age: Int,
     val gender: String,
-    val goal: String?
+    val goal: String?,
+    val profile_image: String? = null
 )
 
 data class ProfileUpdate(
@@ -181,7 +182,8 @@ data class ProfileUpdate(
     val dob: String,
     val age: Int,
     val gender: String,
-    val goal: String
+    val goal: String,
+    val profile_image: String? = null
 )
 
 data class StressCheckInResponse(

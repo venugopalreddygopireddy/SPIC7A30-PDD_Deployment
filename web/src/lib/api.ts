@@ -210,6 +210,7 @@ export interface ProfileResponse {
   age: number;
   gender: string;
   goal: string;
+  profile_image?: string;
 }
 
 export const getProfile = async (): Promise<ProfileResponse> => {

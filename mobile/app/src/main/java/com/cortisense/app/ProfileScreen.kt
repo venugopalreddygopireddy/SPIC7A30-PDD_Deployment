@@ -8,6 +8,14 @@ import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clip
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import android.util.Base64
+import java.io.ByteArrayOutputStream
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -63,6 +71,33 @@ fun ProfileScreen(
     var gender by remember(initialGender) { mutableStateOf<String>(initialGender) }
     var goal by remember(initialGoal) { mutableStateOf<String>(initialGoal) }
 
+    val initialProfileImageUri by viewModel.profileImageUri.collectAsState()
+    var profileImageBase64 by remember(initialProfileImageUri) { mutableStateOf(initialProfileImageUri) }
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    val source = ImageDecoder.createSource(context.contentResolver, uri)
+                    ImageDecoder.decodeBitmap(source)
+                } else {
+                    MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                }
+                
+                // Compress and convert to Base64
+                val outputStream = ByteArrayOutputStream()
+                val resized = Bitmap.createScaledBitmap(bitmap, 400, 400 * bitmap.height / bitmap.width, true)
+                resized.compress(Bitmap.CompressFormat.JPEG, 80, outputStream)
+                val byteArray = outputStream.toByteArray()
+                profileImageBase64 = "data:image/jpeg;base64," + Base64.encodeToString(byteArray, Base64.DEFAULT).replace("\n", "")
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     val context = androidx.compose.ui.platform.LocalContext.current
     val calendar = java.util.Calendar.getInstance()
     val datePickerDialog = android.app.DatePickerDialog(
@@ -112,13 +147,29 @@ fun ProfileScreen(
         ) {
             
 
-            // Profile Picture (Static)
+            // Profile Picture (Static/Upload)
             Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
-                    modifier = Modifier.size(100.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(24.dp)).clip(RoundedCornerShape(24.dp)),
+                    modifier = Modifier.size(100.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(24.dp)).clip(RoundedCornerShape(24.dp))
+                        .clickable { imagePickerLauncher.launch("image/*") },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(50.dp))
+                    if (profileImageBase64.isNotEmpty()) {
+                        AsyncImage(
+                            model = profileImageBase64,
+                            contentDescription = "Profile Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.surface, modifier = Modifier.size(50.dp))
+                    }
+                    Box(
+                        modifier = Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.PhotoCamera, null, tint = Color.White, modifier = Modifier.size(24.dp))
+                    }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(userEmail, color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
@@ -230,7 +281,7 @@ fun ProfileScreen(
             // Save Button
             Button(
                 onClick = {
-                    viewModel.updateProfile(firstName, lastName, userEmail, dob, age, gender, goal, mobile, "")
+                    viewModel.updateProfile(firstName, lastName, userEmail, dob, age, gender, goal, mobile, profileImageBase64)
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(updatedMessage)
                     }

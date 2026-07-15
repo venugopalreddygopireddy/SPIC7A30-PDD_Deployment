@@ -653,7 +653,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateProfile(firstName: String, lastName: String, email: String, dob: String, age: String, gender: String, goal: String, mobile: String, imageUri: String) {
         viewModelScope.launch {
             try {
-                // Ignore imageUri for backend
                 val profileUpdate = ProfileUpdate(
                     first_name = firstName,
                     last_name = lastName,
@@ -661,7 +660,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     dob = dob,
                     age = age.toIntOrNull() ?: 0,
                     gender = gender,
-                    goal = goal
+                    goal = goal,
+                    profile_image = imageUri.takeIf { it.isNotEmpty() }
                 )
                 val response = RetrofitClient.instance.updateProfile(profileUpdate)
                 
@@ -723,8 +723,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         response.gender, 
                         response.goal ?: "", 
                         response.mobile_number ?: "", 
-                        "" // Static image
+                        response.profile_image ?: ""
                     )
+                    _profileImageUri.value = response.profile_image ?: ""
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

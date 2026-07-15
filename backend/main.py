@@ -313,6 +313,8 @@ def update_user_profile(
     db_user.age = profile_data.age
     db_user.gender = profile_data.gender
     db_user.goal = profile_data.goal
+    if profile_data.profile_image is not None:
+        db_user.profile_image = profile_data.profile_image
 
     db.commit()
     db.refresh(db_user)

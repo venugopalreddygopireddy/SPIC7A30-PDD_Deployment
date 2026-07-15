@@ -30,6 +30,7 @@ class UserResponse(BaseModel):
     age: int
     gender: str
     created_at: datetime
+    profile_image: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -61,6 +62,7 @@ class ProfileResponse(BaseModel):
     age: int
     gender: str
     goal: Optional[str] = ""
+    profile_image: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -73,6 +75,7 @@ class ProfileUpdate(BaseModel):
     age: int
     gender: str
     goal: Optional[str] = ""
+    profile_image: Optional[str] = None
 
 # =========================================================
 # CHECK-IN REQUEST

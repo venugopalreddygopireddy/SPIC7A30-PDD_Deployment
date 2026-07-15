@@ -20,6 +20,7 @@ class User(Base):
     
     reset_otp = Column(String, nullable=True)
     reset_otp_expires_at = Column(DateTime, nullable=True)
+    profile_image = Column(String, nullable=True)
 
     checkins = relationship("StressCheckIn", back_populates="user")
 
