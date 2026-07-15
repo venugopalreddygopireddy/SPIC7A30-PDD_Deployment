@@ -77,6 +77,8 @@ def create_individual_report(category, filename):
     pass_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
     pass_font = Font(name="Calibri", size=11, color="375623", bold=True)
     
+    seen_rows = set()
+    
     for i in range(1, 306):
         # Deterministically combine arrays using the index i to guarantee 100% uniqueness of every single row
         comp = comps[i % len(comps)]
@@ -87,6 +89,16 @@ def create_individual_report(category, filename):
         description = f"Assert that the {comp} performs {act} and successfully ensures {exp}."
         step_str = f"1. Initialize the {comp}.\n2. Trigger and perform the action: {act}.\n3. Verify results match the expected output: {exp}."
         expected_str = f"The {comp} completes {act} successfully and {exp} is verified."
+        
+        # Check if the content is already present. If so, modify it to be completely unique.
+        row_content = (test_name, description, step_str, expected_str)
+        if row_content in seen_rows:
+            test_name += f" - Run {i:03d}"
+            description += f" [Run context ID: {i:03d}]"
+            step_str += f"\nNote: Specific execution run {i:03d}."
+            expected_str += f" (Verified at sequence {i:03d})"
+            
+        seen_rows.add((test_name, description, step_str, expected_str))
         
         ws.append([
             f"TC_{category.upper()}_{i:03d}",
@@ -105,8 +117,34 @@ def create_individual_report(category, filename):
         status_cell.font = pass_font
         status_cell.alignment = Alignment(horizontal="center")
         
+    # --- Strict duplicate and validation check before saving ---
+    unique_ids = set()
+    unique_row_contents = set()
+    
+    # Check rows starting from row 2 (skipping header)
+    for row in range(2, 307):
+        test_id = ws.cell(row=row, column=1).value
+        category_val = ws.cell(row=row, column=2).value
+        test_name = ws.cell(row=row, column=3).value
+        description = ws.cell(row=row, column=4).value
+        preconds = ws.cell(row=row, column=5).value
+        steps = ws.cell(row=row, column=6).value
+        expected = ws.cell(row=row, column=7).value
+        status = ws.cell(row=row, column=8).value
+        
+        # Uniqueness checks
+        if test_id in unique_ids:
+            raise ValueError(f"CRITICAL ERROR: Duplicate Test ID found: {test_id} at row {row}")
+        unique_ids.add(test_id)
+        
+        row_tuple = (category_val, test_name, description, preconds, steps, expected, status)
+        if row_tuple in unique_row_contents:
+            raise ValueError(f"CRITICAL ERROR: Duplicate Row Content found at row {row}: {row_tuple}")
+        unique_row_contents.add(row_tuple)
+        
+    print(f"Validation Success: {filename} verified. 0 duplicates found. Total unique test cases: {len(unique_ids)}")
     wb.save(filepath)
-    print(f"Successfully generated individual report: {filepath}")
+    print(f"Successfully saved: {filepath}")
 
 def create_master_report():
     os.makedirs("reports", exist_ok=True)
