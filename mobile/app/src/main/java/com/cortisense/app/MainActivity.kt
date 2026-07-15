@@ -1531,6 +1531,9 @@ fun SignupScreen(
 
     val maxSizeBytes = 2 * 1024 * 1024 // 2 MB
 
+    // Temp file URI for camera capture
+    var cameraPhotoUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
     // Gallery launcher — reads bytes and converts to Base64
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -1538,6 +1541,7 @@ fun SignupScreen(
         if (uri != null) {
             val inputStream = context.contentResolver.openInputStream(uri)
             val bytes = inputStream?.readBytes()
+            inputStream?.close()
             if (bytes != null) {
                 if (bytes.size > maxSizeBytes) {
                     errorMessage = "Profile photo must be smaller than 2 MB."
@@ -1549,19 +1553,24 @@ fun SignupScreen(
         }
     }
 
-    // Camera launcher — compresses bitmap and converts to Base64
+    // Camera launcher — saves full-res photo via FileProvider, converts to Base64
     val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: android.graphics.Bitmap? ->
-        if (bitmap != null) {
-            val stream = java.io.ByteArrayOutputStream()
-            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, stream)
-            val bytes = stream.toByteArray()
-            if (bytes.size > maxSizeBytes) {
-                errorMessage = "Profile photo must be smaller than 2 MB."
-            } else {
-                imageBase64 = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT).replace("\n", "")
-                errorMessage = null
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success) {
+            val uri = cameraPhotoUri
+            if (uri != null) {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val bytes = inputStream?.readBytes()
+                inputStream?.close()
+                if (bytes != null) {
+                    if (bytes.size > maxSizeBytes) {
+                        errorMessage = "Profile photo must be smaller than 2 MB."
+                    } else {
+                        imageBase64 = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT).replace("\n", "")
+                        errorMessage = null
+                    }
+                }
             }
         }
     }
@@ -1574,7 +1583,16 @@ fun SignupScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showImageSourceDialog = false
-                    cameraLauncher.launch(null)
+                    // Create a temp file and get a FileProvider URI for the camera
+                    val photoFile = java.io.File(context.cacheDir, "camera_photos").also { it.mkdirs() }
+                        .let { java.io.File(it, "signup_photo_${System.currentTimeMillis()}.jpg") }
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        photoFile
+                    )
+                    cameraPhotoUri = uri
+                    cameraLauncher.launch(uri)
                 }) { Text("Camera") }
             },
             dismissButton = {
@@ -5590,14 +5608,21 @@ fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         }
     }
 
+    var editCameraPhotoUri by remember { mutableStateOf<android.net.Uri?>(null) }
+
     val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: android.graphics.Bitmap? ->
-        if (bitmap != null) {
-            val stream = java.io.ByteArrayOutputStream()
-            bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 100, stream)
-            val bytes = stream.toByteArray()
-            imageUri = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT).replace("\n", "")
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        if (success) {
+            val uri = editCameraPhotoUri
+            if (uri != null) {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val bytes = inputStream?.readBytes()
+                inputStream?.close()
+                if (bytes != null) {
+                    imageUri = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT).replace("\n", "")
+                }
+            }
         }
     }
     
@@ -5611,7 +5636,15 @@ fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
             confirmButton = {
                 TextButton(onClick = {
                     showImageSourceDialog = false
-                    cameraLauncher.launch(null)
+                    val photoFile = java.io.File(context.cacheDir, "camera_photos").also { it.mkdirs() }
+                        .let { java.io.File(it, "profile_photo_${System.currentTimeMillis()}.jpg") }
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        photoFile
+                    )
+                    editCameraPhotoUri = uri
+                    cameraLauncher.launch(uri)
                 }) {
                     Text("Camera")
                 }
