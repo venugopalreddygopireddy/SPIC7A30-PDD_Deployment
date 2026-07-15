@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, User, Moon, Zap, Briefcase, Check, BrainCircuit, AlertTriangle, Activity, Activity as RunIcon } from 'lucide-react';
-import { submitCheckIn, CheckInRequest, ActionItem, completeAction } from '@/lib/api';
+import { submitCheckIn, CheckInRequest, ActionItem, completeAction, getProfile } from '@/lib/api';
 import { useTranslation } from '@/components/TranslationProvider';
 
 const steps = [
@@ -19,8 +19,8 @@ const FloatingInput = ({ label, value, onChange, type = "text", readOnly = false
   <div className="relative mt-2">
     <input 
       type={type} 
-      value={value} 
-      onChange={e => onChange(e.target.value)} 
+      value={value ?? ''} 
+      onChange={e => onChange ? onChange(e.target.value) : undefined} 
       readOnly={readOnly}
       className={`peer w-full bg-transparent border ${readOnly ? 'border-slate-800 text-slate-500' : 'border-slate-700 text-white'} rounded-lg px-4 py-3 focus:border-slate-500 outline-none transition-colors`} 
     />
@@ -100,6 +100,36 @@ export default function CheckInScreen() {
   const [error, setError] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [actions, setActions] = useState<ActionItem[]>([]);
+  const [userProfile, setUserProfile] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        const profile = await getProfile();
+        setUserProfile(profile);
+        
+        const isNewUser = !profile.mobile_number && !profile.dob && (!profile.gender || profile.gender === 'Prefer not to say');
+        if (isNewUser) {
+          setFormData(prev => ({
+            ...prev,
+            age: '' as any,
+            gender: '',
+            mobile_number: '9876543210'
+          }));
+        } else {
+          setFormData(prev => ({
+            ...prev,
+            age: profile.age,
+            gender: profile.gender,
+            mobile_number: profile.mobile_number || ''
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to load user profile in checkin:', err);
+      }
+    };
+    fetchProfileData();
+  }, []);
 
   const handleCompleteAction = async (actionId: string) => {
     try {
@@ -197,6 +227,20 @@ export default function CheckInScreen() {
       ];
 
       const submitData = { ...formData };
+      if (!submitData.age && userProfile) {
+        submitData.age = userProfile.age || 25;
+      } else if (!submitData.age) {
+        submitData.age = 25;
+      }
+      if (!submitData.gender && userProfile) {
+        submitData.gender = userProfile.gender || "Prefer not to say";
+      } else if (!submitData.gender) {
+        submitData.gender = "Prefer not to say";
+      }
+      if (submitData.mobile_number === '9876543210') {
+        submitData.mobile_number = '';
+      }
+
       submitData.alcohol_intake = submitData.alcohol_intake.toString();
       submitData.meditation_practice = submitData.meditation_practice.toString();
       submitData.travel_time = Math.round(submitData.travel_time); // backend expects int
