@@ -2,11 +2,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getTrendsAnalytics, TrendsResponse } from '@/lib/api';
+import { getTrendsAnalytics, getMonthlyAnalytics, TrendsResponse, MonthlyAnalyticsResponse } from '@/lib/api';
+import { Check } from 'lucide-react';
 
 export default function TrendsScreen() {
   const router = useRouter();
   const [trendsData, setTrendsData] = useState<TrendsResponse | null>(null);
+  const [monthlyData, setMonthlyData] = useState<MonthlyAnalyticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,8 +19,14 @@ export default function TrendsScreen() {
       return;
     }
 
-    getTrendsAnalytics()
-      .then(data => setTrendsData(data))
+    Promise.all([
+      getTrendsAnalytics(),
+      getMonthlyAnalytics()
+    ])
+      .then(([trends, monthly]) => {
+        setTrendsData(trends);
+        setMonthlyData(monthly);
+      })
       .catch(err => {
         if (err.response?.status === 401) {
           localStorage.removeItem('jwtToken');
@@ -123,6 +131,98 @@ export default function TrendsScreen() {
           </div>
         </div>
       </div>
+
+      {/* Streak Calendar */}
+      {monthlyData && (() => {
+        const today = new Date();
+        const currentYear = today.getFullYear();
+        const currentMonth = today.getMonth();
+        const currentDay = today.getDate();
+        
+        const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+        const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const firstDayOfWeek = firstDayOfMonth.getDay(); // 0 is Sunday
+        
+        const monthName = firstDayOfMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
+        const checkinDates = new Set(Object.keys(monthlyData.calendar_activity));
+        
+        const checkedThisMonth = Array.from(checkinDates).filter(d => {
+          return d.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`);
+        }).length;
+        
+        const passedDays = currentDay;
+        const pct = passedDays > 0 ? Math.round((checkedThisMonth / passedDays) * 100) : 0;
+        
+        const totalCells = daysInMonth + firstDayOfWeek;
+        const cells = [];
+        for (let i = 0; i < Math.ceil(totalCells / 7) * 7; i++) {
+          const day = i - firstDayOfWeek + 1;
+          if (day > 0 && day <= daysInMonth) {
+            const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const isCheckedIn = checkinDates.has(dateStr);
+            const isFuture = day > currentDay;
+            
+            let bg = 'bg-[#2b2d42]';
+            let textClass = 'text-slate-400';
+            if (isCheckedIn) {
+              bg = 'bg-[#82e0aa]';
+              textClass = 'text-slate-900';
+            } else if (isFuture) {
+              bg = 'bg-transparent';
+              textClass = 'text-slate-600';
+            }
+            
+            cells.push(
+              <div key={i} className={`aspect-square rounded-[10px] ${bg} flex flex-col items-center justify-center m-[4px]`}>
+                {isCheckedIn && <Check size={12} className="text-slate-900 mb-[2px]" strokeWidth={3} />}
+                <span className={`font-bold text-[10px] ${textClass}`}>{day}</span>
+              </div>
+            );
+          } else {
+            cells.push(<div key={i} className="aspect-square m-[4px] bg-transparent" />);
+          }
+        }
+
+        return (
+          <div className="bg-[#1e2132] border border-slate-800 rounded-[28px] p-6 shadow-lg">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-[#82e0aa] font-extrabold text-xl">{monthName}</h3>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#82e0aa]"></div>
+                  <span className="text-slate-300 text-xs font-bold tracking-wide">Visited</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#475569]"></div>
+                  <span className="text-slate-300 text-xs font-bold tracking-wide">Missed</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-7 mb-2">
+              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                <div key={day} className="text-center text-slate-100 text-xs font-extrabold mb-2">{day}</div>
+              ))}
+            </div>
+            
+            <div className="grid grid-cols-7 mb-6">
+              {cells}
+            </div>
+            
+            <div className="h-[1px] w-full bg-slate-700/50 mb-4"></div>
+            
+            <div className="flex justify-between items-center">
+              <div>
+                <div className="text-slate-200 font-bold text-sm">{checkedThisMonth} / {passedDays} days</div>
+                <div className="text-slate-400 text-xs font-medium">checked in this month</div>
+              </div>
+              <div className="w-12 h-12 rounded-full bg-[#82e0aa]/10 flex items-center justify-center">
+                <span className="text-[#82e0aa] font-extrabold text-sm">{pct}%</span>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
