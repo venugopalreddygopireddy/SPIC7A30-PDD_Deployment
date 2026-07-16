@@ -118,6 +118,20 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.CreateCredentialException
 import android.app.Activity
 
+import android.util.Base64
+
+fun getImageModel(base64Str: String): Any {
+    if (base64Str.startsWith("data:image")) {
+        try {
+            val base64 = base64Str.substringAfter("base64,")
+            return Base64.decode(base64, Base64.DEFAULT)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    return base64Str
+}
+
 @Composable
 fun getTranslatedStressLevel(levelKey: String): String {
     val context = LocalContext.current
@@ -418,7 +432,10 @@ class MainActivity : AppCompatActivity() {
                         composable("checkinHistory") {
                             CheckInHistoryScreen(
                                 viewModel = viewModel,
-                                onDetail = { id -> navController.navigate("checkinDetail/$id") },
+                                onDetail = { id -> 
+                                    viewModel.selectRecord(id)
+                                    navController.navigate("history_detail") 
+                                },
                                 onBack = { navController.popBackStack() }
                             )
                         }
@@ -480,10 +497,21 @@ class MainActivity : AppCompatActivity() {
                                 navController = navController,
                                 onLogout = {
                                     viewModel.logout()
-                                    navController.navigate("login") {
-                                        popUpTo(0) { inclusive = true }
-                                    }
+                                    navController.navigate("welcome") { popUpTo(0) { inclusive = true } }
                                 }
+                            )
+                        }
+                        
+                        composable("privacy") {
+                            PrivacyScreen(
+                                viewModel = viewModel,
+                                navController = navController
+                            )
+                        }
+                        
+                        composable("about") {
+                            AboutScreen(
+                                navController = navController
                             )
                         }
                         composable("edit_profile") {
@@ -1657,7 +1685,7 @@ fun SignupScreen(
             ) {
                 if (imageBase64.isNotEmpty()) {
                     coil.compose.AsyncImage(
-                        model = imageBase64,
+                        model = getImageModel(imageBase64),
                         contentDescription = "Profile Picture",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -2057,27 +2085,60 @@ fun CortiSenseScreen(
             RecommendationsScreen(
                 viewModel = viewModel,
                 onBack = { currentSubScreen = null },
-                onStartBreathing = { currentSubScreen = "breathing" },
-                onViewSleepGuide = { currentSubScreen = "sleep_guide" },
-                onViewActivityPlan = { currentSubScreen = "activity_plan" },
-                onViewNutritionTips = { currentSubScreen = "nutrition_tips" },
-                onStartMindfulness = { currentSubScreen = "mindfulness" }
+                onStartBreathing = { 
+                    viewModel.addNotification("Session Started", "You started a breathing exercise.", "exercise")
+                    currentSubScreen = "breathing" 
+                },
+                onViewSleepGuide = { 
+                    viewModel.addNotification("Session Started", "You started the sleep guide.", "exercise")
+                    currentSubScreen = "sleep_guide" 
+                },
+                onViewActivityPlan = { 
+                    viewModel.addNotification("Session Started", "You started the activity plan.", "exercise")
+                    currentSubScreen = "activity_plan" 
+                },
+                onViewNutritionTips = { 
+                    viewModel.addNotification("Session Started", "You started nutrition tips.", "exercise")
+                    currentSubScreen = "nutrition_tips" 
+                },
+                onStartMindfulness = { 
+                    viewModel.addNotification("Session Started", "You started a mindfulness session.", "exercise")
+                    currentSubScreen = "mindfulness" 
+                }
             )
         }
         currentSubScreen == "breathing" -> {
-            BreathingExerciseScreen(onClose = { currentSubScreen = "recommendations" })
+            BreathingExerciseScreen(onClose = { 
+                viewModel.addNotification("Session Completed", "Great job! You've completed your breathing exercise.", "achievement")
+                currentSubScreen = "recommendations" 
+            })
         }
         currentSubScreen == "sleep_guide" -> {
-            SleepOptimizationScreen(onBack = { currentSubScreen = "recommendations" })
+            SleepOptimizationScreen(onBack = { 
+                viewModel.addNotification("Session Completed", "Great job! You've completed your sleep guide.", "achievement")
+                currentSubScreen = "recommendations" 
+            })
         }
         currentSubScreen == "activity_plan" -> {
-            ActivityPlanScreen(onBack = { currentSubScreen = "recommendations" })
+            ActivityPlanScreen(onBack = { 
+                viewModel.addNotification("Session Completed", "Great job! You've completed your activity plan.", "achievement")
+                currentSubScreen = "recommendations" 
+            })
         }
         currentSubScreen == "nutrition_tips" -> {
-            NutritionTipsScreen(onBack = { currentSubScreen = "recommendations" })
+            NutritionTipsScreen(onBack = { 
+                viewModel.addNotification("Session Completed", "Great job! You've completed your nutrition tips.", "achievement")
+                currentSubScreen = "recommendations" 
+            })
         }
         currentSubScreen == "mindfulness" -> {
-            MindfulnessScreen(onBack = { currentSubScreen = "recommendations" }, onComplete = { currentSubScreen = "completion" })
+            MindfulnessScreen(
+                onBack = { currentSubScreen = "recommendations" }, 
+                onComplete = { 
+                    viewModel.addNotification("Session Completed", "Great job! You've completed your mindfulness session.", "achievement")
+                    currentSubScreen = "completion" 
+                }
+            )
         }
         currentSubScreen == "completion" -> {
             ExerciseCompletionScreen(
@@ -2466,7 +2527,7 @@ fun HomeScreen(
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                     if (profileImageUri.isNotEmpty()) {
                         coil.compose.AsyncImage(
-                            model = profileImageUri,
+                            model = getImageModel(profileImageUri),
                             contentDescription = "Profile Image",
                             modifier = Modifier
                                 .size(64.dp)
@@ -5286,7 +5347,7 @@ fun ProfileMainScreenContent(
                 ) {
                     if (imageUri.isNotEmpty()) {
                         coil.compose.AsyncImage(
-                            model = imageUri,
+                            model = getImageModel(imageUri),
                             contentDescription = "Profile Image",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -5325,7 +5386,7 @@ fun ProfileMainScreenContent(
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (imageUri.isNotEmpty()) {
                 coil.compose.AsyncImage(
-                    model = imageUri,
+                    model = getImageModel(imageUri),
                     contentDescription = "Profile Image",
                     modifier = Modifier
                         .size(80.dp)
@@ -5600,10 +5661,20 @@ fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         contract = ActivityResultContracts.GetContent()
     ) { uri: android.net.Uri? ->
         if (uri != null) {
-            val inputStream = context.contentResolver.openInputStream(uri)
-            val bytes = inputStream?.readBytes()
-            if (bytes != null) {
-                imageUri = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT).replace("\n", "")
+            try {
+                val bitmap = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                    val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
+                    android.graphics.ImageDecoder.decodeBitmap(source)
+                } else {
+                    android.provider.MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                }
+                val outputStream = java.io.ByteArrayOutputStream()
+                val resized = android.graphics.Bitmap.createScaledBitmap(bitmap, 400, 400 * bitmap.height / bitmap.width, true)
+                resized.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
+                val byteArray = outputStream.toByteArray()
+                imageUri = "data:image/jpeg;base64," + android.util.Base64.encodeToString(byteArray, android.util.Base64.NO_WRAP)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -5616,11 +5687,20 @@ fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
         if (success) {
             val uri = editCameraPhotoUri
             if (uri != null) {
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val bytes = inputStream?.readBytes()
-                inputStream?.close()
-                if (bytes != null) {
-                    imageUri = "data:image/jpeg;base64," + android.util.Base64.encodeToString(bytes, android.util.Base64.DEFAULT).replace("\n", "")
+                try {
+                    val bitmap = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                        val source = android.graphics.ImageDecoder.createSource(context.contentResolver, uri)
+                        android.graphics.ImageDecoder.decodeBitmap(source)
+                    } else {
+                        android.provider.MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                    }
+                    val outputStream = java.io.ByteArrayOutputStream()
+                    val resized = android.graphics.Bitmap.createScaledBitmap(bitmap, 400, 400 * bitmap.height / bitmap.width, true)
+                    resized.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
+                    val byteArray = outputStream.toByteArray()
+                    imageUri = "data:image/jpeg;base64," + android.util.Base64.encodeToString(byteArray, android.util.Base64.NO_WRAP)
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 }
             }
         }
@@ -5682,7 +5762,7 @@ fun EditProfileScreen(viewModel: MainViewModel, onBack: () -> Unit) {
                 ) {
                     if (imageUri.isNotEmpty()) {
                         coil.compose.AsyncImage(
-                            model = imageUri,
+                            model = getImageModel(imageUri),
                             contentDescription = "Profile Image",
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
@@ -6729,6 +6809,7 @@ fun PrivacyScreen(viewModel: MainViewModel, onLogout: () -> Unit, onBack: () -> 
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
     val tealColor = MaterialTheme.colorScheme.primary
     var showExportDialog by remember { mutableStateOf(false) }
+    var showDeleteModal by remember { mutableStateOf(false) }
 
     if (showExportDialog) {
         AlertDialog(
@@ -6830,9 +6911,7 @@ fun PrivacyScreen(viewModel: MainViewModel, onLogout: () -> Unit, onBack: () -> 
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { 
-                        viewModel.deleteUserAccount { 
-                            onLogout()
-                        }
+                        showDeleteModal = true
                     }) {
                         Icon(Icons.Default.Delete, null, tint = Color.Red)
                         Spacer(modifier = Modifier.width(16.dp))
@@ -6842,6 +6921,33 @@ fun PrivacyScreen(viewModel: MainViewModel, onLogout: () -> Unit, onBack: () -> 
                         }
                     }
                 }
+            }
+            
+            if (showDeleteModal) {
+                AlertDialog(
+                    onDismissRequest = { showDeleteModal = false },
+                    icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    title = { Text("Delete Account?", fontWeight = FontWeight.Bold) },
+                    text = { Text("Are you sure you want to permanently delete your account? All your check-ins, history, and credentials will be removed from the database forever. This action cannot be undone.") },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                viewModel.deleteUserAccount {
+                                    showDeleteModal = false
+                                    onLogout()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Yes, Delete Permanently")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showDeleteModal = false }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
             }
 
         }

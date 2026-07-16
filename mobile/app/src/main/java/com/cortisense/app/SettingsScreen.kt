@@ -97,6 +97,27 @@ fun SettingsScreen(
             )
 
             HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+            
+            // Privacy Section
+            SettingsItem(
+                icon = Icons.Default.Shield,
+                title = "Privacy & Data",
+                onClick = { navController.navigate("privacy") },
+                showArrow = true
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+            
+            // About Section
+            SettingsItem(
+                icon = Icons.Default.HelpCenter,
+                title = "About & Help",
+                onClick = { navController.navigate("about") },
+                showArrow = true
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+
 
             Text(
                 text = "AI Chat Settings",

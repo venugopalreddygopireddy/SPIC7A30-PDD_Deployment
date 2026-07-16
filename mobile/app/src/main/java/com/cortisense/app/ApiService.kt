@@ -297,6 +297,9 @@ interface ApiService {
 
     @PUT("/users/me/profile")
     suspend fun updateProfile(@Body profile: ProfileUpdate): ProfileResponse
+    
+    @retrofit2.http.DELETE("/users/me")
+    suspend fun deleteAccount(): retrofit2.Response<Unit>
 
 
     @GET("/history/{id}")

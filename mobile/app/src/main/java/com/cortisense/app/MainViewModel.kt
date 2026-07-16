@@ -189,6 +189,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isSafeMode = MutableStateFlow(false)
     val isSafeMode = _isSafeMode.asStateFlow()
+    
+    fun selectRecord(id: Long) {
+        _selectedRecord.value = _history.value.find { it.id == id }
+    }
 
     var stressScore by mutableStateOf(0)
     var stressLevel by mutableStateOf("Low Stress")
@@ -670,6 +674,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateProfile(firstName: String, lastName: String, email: String, dob: String, age: String, gender: String, goal: String, mobile: String, imageUri: String) {
         viewModelScope.launch {
             try {
+                // Update local DataStore FIRST so the UI updates even if API fails (e.g. large payload)
+                preferenceManager.updateProfile(
+                    firstName, 
+                    lastName, 
+                    email, 
+                    dob, 
+                    age, 
+                    gender, 
+                    goal, 
+                    mobile, 
+                    imageUri
+                )
+
                 val profileUpdate = ProfileUpdate(
                     first_name = firstName,
                     last_name = lastName,
@@ -682,18 +699,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 val response = RetrofitClient.instance.updateProfile(profileUpdate)
                 
-                // Update local DataStore
-                preferenceManager.updateProfile(
-                    response.first_name, 
-                    response.last_name, 
-                    email, 
-                    response.dob ?: "", 
-                    response.age.toString(), 
-                    response.gender, 
-                    response.goal ?: "", 
-                    response.mobile_number ?: "", 
-                    imageUri
-                )
                 
                 NotificationHelper.showNotification(
                     context = getApplication<Application>(),
@@ -1069,7 +1074,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     fun markAllNotificationsAsRead() {
         viewModelScope.launch {
-            database.notificationDao().markAllAsRead(currentUserEmail)
+            val email = _userEmail.value
+            if (email.isNotEmpty()) {
+                database.notificationDao().markAllAsRead(email)
+            }
+        }
+    }
+
+    fun addNotification(title: String, message: String, type: String = "info") {
+        viewModelScope.launch {
+            val email = _userEmail.value
+            if (email.isNotEmpty()) {
+                database.notificationDao().insertNotification(
+                    NotificationEntity(
+                        userEmail = email,
+                        title = title,
+                        message = message,
+                        type = type,
+                        isRead = false,
+                        timestamp = System.currentTimeMillis()
+                    )
+                )
+            }
         }
     }
 
@@ -1131,15 +1157,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     val paint = android.graphics.Paint().apply {
                         textSize = 12f
                         color = android.graphics.Color.BLACK
+                        typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.NORMAL)
                     }
                     val boldPaint = android.graphics.Paint().apply {
                         textSize = 14f
                         color = android.graphics.Color.BLACK
-                        isFakeBoldText = true
+                        typeface = android.graphics.Typeface.create("serif", android.graphics.Typeface.BOLD)
                     }
                     
                     var y = 50f
-                    canvas.drawText("=== CortiSense Wellness Report ===", 50f, y, boldPaint); y += 30f
+                    // Draw Logo
+                    try {
+                        val drawable = androidx.core.content.ContextCompat.getDrawable(getApplication(), R.drawable.app_logo)
+                        if (drawable != null) {
+                            val bitmap = (drawable as android.graphics.drawable.BitmapDrawable).bitmap
+                            val scaledBitmap = android.graphics.Bitmap.createScaledBitmap(bitmap, 40, 40, true)
+                            canvas.drawBitmap(scaledBitmap, 50f, y - 20f, null)
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                    canvas.drawText("=== CortiSense Wellness Report ===", 100f, y, boldPaint); y += 40f
+
                     canvas.drawText("User: ${_userName.value}", 50f, y, paint); y += 20f
                     canvas.drawText("Period: $period | Format: $format", 50f, y, paint); y += 20f
                     canvas.drawText("Generated: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}", 50f, y, paint); y += 40f
@@ -1182,6 +1221,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun deleteUserAccount(onSuccess: () -> Unit) {
         viewModelScope.launch {
+            try {
+                val token = _jwtToken.value.ifEmpty { preferenceManager.jwtToken.firstOrNull() }
+                if (!token.isNullOrEmpty()) {
+                    RetrofitClient.instance.deleteAccount()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MainViewModel", "Failed to delete account on server", e)
+            }
             database.clearAllTables()
             preferenceManager.clearAll()
             onSuccess()
