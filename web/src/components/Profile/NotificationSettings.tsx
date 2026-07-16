@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Clock, Activity, Lightbulb, Trophy } from 'lucide-react';
 
 interface Props {
@@ -25,6 +25,24 @@ export default function NotificationSettings({ onBack }: Props) {
   const [stressAlerts, setStressAlerts] = useState(true);
   const [recommendations, setRecommendations] = useState(true);
   const [achievements, setAchievements] = useState(true);
+
+  useEffect(() => {
+    const savedDailyCheckin = localStorage.getItem('notify_dailyCheckin');
+    const savedStressAlerts = localStorage.getItem('notify_stressAlerts');
+    const savedRecommendations = localStorage.getItem('notify_recommendations');
+    const savedAchievements = localStorage.getItem('notify_achievements');
+
+    if (savedDailyCheckin !== null) setDailyCheckin(savedDailyCheckin === 'true');
+    if (savedStressAlerts !== null) setStressAlerts(savedStressAlerts === 'true');
+    if (savedRecommendations !== null) setRecommendations(savedRecommendations === 'true');
+    if (savedAchievements !== null) setAchievements(savedAchievements === 'true');
+  }, []);
+
+  const handleToggle = (key: string, currentValue: boolean, setter: React.Dispatch<React.SetStateAction<boolean>>) => {
+    const newValue = !currentValue;
+    setter(newValue);
+    localStorage.setItem(`notify_${key}`, newValue.toString());
+  };
 
   return (
     <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col h-full bg-[#050810]">
@@ -53,7 +71,7 @@ export default function NotificationSettings({ onBack }: Props) {
               <p className="text-slate-400 text-sm">Remind me to log my daily data</p>
             </div>
           </div>
-          <Toggle active={dailyCheckin} onClick={() => setDailyCheckin(!dailyCheckin)} />
+          <Toggle active={dailyCheckin} onClick={() => handleToggle('dailyCheckin', dailyCheckin, setDailyCheckin)} />
         </div>
 
         <div className="flex items-center justify-between p-5 bg-slate-900/50 border border-slate-800 rounded-2xl">
@@ -66,7 +84,7 @@ export default function NotificationSettings({ onBack }: Props) {
               <p className="text-slate-400 text-sm">Notify when stress levels are high</p>
             </div>
           </div>
-          <Toggle active={stressAlerts} onClick={() => setStressAlerts(!stressAlerts)} />
+          <Toggle active={stressAlerts} onClick={() => handleToggle('stressAlerts', stressAlerts, setStressAlerts)} />
         </div>
 
         <div className="flex items-center justify-between p-5 bg-slate-900/50 border border-slate-800 rounded-2xl">
@@ -79,7 +97,7 @@ export default function NotificationSettings({ onBack }: Props) {
               <p className="text-slate-400 text-sm">New personalized suggestions</p>
             </div>
           </div>
-          <Toggle active={recommendations} onClick={() => setRecommendations(!recommendations)} />
+          <Toggle active={recommendations} onClick={() => handleToggle('recommendations', recommendations, setRecommendations)} />
         </div>
 
         <div className="flex items-center justify-between p-5 bg-slate-900/50 border border-slate-800 rounded-2xl">
@@ -92,7 +110,7 @@ export default function NotificationSettings({ onBack }: Props) {
               <p className="text-slate-400 text-sm">Badges and milestone celebrations</p>
             </div>
           </div>
-          <Toggle active={achievements} onClick={() => setAchievements(!achievements)} />
+          <Toggle active={achievements} onClick={() => handleToggle('achievements', achievements, setAchievements)} />
         </div>
 
       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Sun, Moon, Settings, Check } from 'lucide-react';
 
 interface Props {
@@ -7,6 +7,32 @@ interface Props {
 
 export default function AppearanceSettings({ onBack }: Props) {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('dark');
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system';
+    if (savedTheme) {
+      setTheme(savedTheme);
+    }
+  }, []);
+
+  const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    
+    // In a real app with Tailwind dark mode configured:
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (newTheme === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      // System default logic
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+  };
 
   return (
     <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col h-full bg-[#050810]">
@@ -46,7 +72,7 @@ export default function AppearanceSettings({ onBack }: Props) {
       
       <div className="space-y-4 mb-10">
         <button 
-          onClick={() => setTheme('light')}
+          onClick={() => handleThemeChange('light')}
           className={`w-full flex items-center justify-between p-5 rounded-2xl transition-colors border ${
             theme === 'light' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800/50 text-white'
           }`}
@@ -62,7 +88,7 @@ export default function AppearanceSettings({ onBack }: Props) {
         </button>
 
         <button 
-          onClick={() => setTheme('dark')}
+          onClick={() => handleThemeChange('dark')}
           className={`w-full flex items-center justify-between p-5 rounded-2xl transition-colors border ${
             theme === 'dark' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800/50 text-white'
           }`}
@@ -78,7 +104,7 @@ export default function AppearanceSettings({ onBack }: Props) {
         </button>
 
         <button 
-          onClick={() => setTheme('system')}
+          onClick={() => handleThemeChange('system')}
           className={`w-full flex items-center justify-between p-5 rounded-2xl transition-colors border ${
             theme === 'system' ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800/50 text-white'
           }`}

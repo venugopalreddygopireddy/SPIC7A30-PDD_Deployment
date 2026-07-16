@@ -1,11 +1,46 @@
 import React from 'react';
 import { ArrowLeft, Shield, Download, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Props {
   onBack: () => void;
 }
 
 export default function PrivacySettings({ onBack }: Props) {
+  const router = useRouter();
+
+  const handleDownload = () => {
+    // Generate dummy user data to simulate a data export
+    const data = {
+      user: localStorage.getItem('userEmail') || 'user@example.com',
+      exportDate: new Date().toISOString(),
+      stressData: [
+        { date: '2026-07-10', score: 35 },
+        { date: '2026-07-11', score: 42 },
+      ],
+      preferences: {
+        theme: localStorage.getItem('theme') || 'dark',
+        language: localStorage.getItem('language') || 'en',
+      }
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'CortiSense_MyData.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDelete = () => {
+    if (window.confirm('Are you sure you want to permanently delete your account? This action cannot be undone.')) {
+      localStorage.clear(); // Clear all user data/tokens
+      router.push('/welcome');
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col h-full bg-[#050810]">
       <div className="flex items-center mb-6">
@@ -74,7 +109,7 @@ export default function PrivacySettings({ onBack }: Props) {
         
         <button 
           className="w-full flex items-center p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50"
-          onClick={() => alert('Data download started.')}
+          onClick={handleDownload}
         >
           <Download className="text-slate-400 mr-4 shrink-0" size={24} />
           <div className="text-left">
@@ -85,11 +120,7 @@ export default function PrivacySettings({ onBack }: Props) {
 
         <button 
           className="w-full flex items-center p-5 hover:bg-rose-500/10 transition-colors"
-          onClick={() => {
-             if (window.confirm('Are you sure you want to permanently delete your account? This action cannot be undone.')) {
-               alert('Account deletion requested.');
-             }
-          }}
+          onClick={handleDelete}
         >
           <Trash2 className="text-rose-500 mr-4 shrink-0" size={24} />
           <div className="text-left">

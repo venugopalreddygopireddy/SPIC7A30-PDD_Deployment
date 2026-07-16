@@ -181,7 +181,7 @@ export default function ProfileScreen() {
   if (activeView === 'language') return <LanguageSettings onBack={() => setActiveView('main')} />;
   if (activeView === 'notifications') return <NotificationSettings onBack={() => setActiveView('main')} />;
   if (activeView === 'privacy') return <PrivacySettings onBack={() => setActiveView('main')} />;
-  if (activeView === 'about') return <AboutSettings onBack={() => setActiveView('main')} />;
+  if (activeView === 'about') return <AboutSettings onBack={() => setActiveView('main')} onNavigateToPrivacy={() => setActiveView('privacy')} />;
 
   if (isEditing) {
     return (

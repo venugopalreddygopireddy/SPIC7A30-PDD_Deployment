@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Search, Check, Globe } from 'lucide-react';
 
 interface Props {
@@ -15,6 +15,19 @@ const LANGUAGES = [
 export default function LanguageSettings({ onBack }: Props) {
   const [language, setLanguage] = useState('en');
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const savedLang = localStorage.getItem('language');
+    if (savedLang) {
+      setLanguage(savedLang);
+    }
+  }, []);
+
+  const handleLanguageChange = (id: string) => {
+    setLanguage(id);
+    localStorage.setItem('language', id);
+    // In a real app, this might trigger an i18n language switch
+  };
 
   const filteredLanguages = LANGUAGES.filter(l => 
     l.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -56,7 +69,7 @@ export default function LanguageSettings({ onBack }: Props) {
         {filteredLanguages.map(lang => (
           <button 
             key={lang.id}
-            onClick={() => setLanguage(lang.id)}
+            onClick={() => handleLanguageChange(lang.id)}
             className={`w-full flex items-center justify-between p-5 rounded-2xl transition-colors border ${
               language === lang.id ? 'bg-emerald-500/10 border-emerald-500/50' : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800/50'
             }`}
