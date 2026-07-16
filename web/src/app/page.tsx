@@ -48,7 +48,6 @@ import {
   ArrowLeft,
   AlertTriangle,
   Info,
-  Clock,
   CheckCircle2,
   Trash2
 } from 'lucide-react';
