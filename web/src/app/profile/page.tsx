@@ -302,7 +302,7 @@ export default function ProfileScreen() {
               <label className="text-slate-400 text-sm font-medium ml-1">Age</label>
               <input 
                 type="text" 
-                value={age} 
+                value={isNaN(age) ? '' : age} 
                 readOnly
                 className="w-full mt-1 bg-slate-900/30 border border-slate-800 p-4 rounded-2xl text-slate-400 outline-none"
               />
