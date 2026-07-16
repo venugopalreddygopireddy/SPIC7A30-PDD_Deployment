@@ -328,7 +328,7 @@ interface ApiService {
 
 object RetrofitClient {
 
-    private const val BASE_URL = "https://cortisense-backend.onrender.com/"
+    private const val BASE_URL = "http://10.211.221.160:8000/"
 
     var preferenceManager: PreferenceManager? = null
 
