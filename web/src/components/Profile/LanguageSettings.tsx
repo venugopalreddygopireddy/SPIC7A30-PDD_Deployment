@@ -44,7 +44,7 @@ export default function LanguageSettings({ onBack }: Props) {
   );
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col h-full bg-[#050810]">
+    <div className="flex-1 overflow-y-auto px-6 py-6 flex flex-col h-full bg-[#050810] notranslate">
       <div className="flex items-center mb-6">
         <button onClick={onBack} className="text-white p-2 -ml-2 rounded-full hover:bg-slate-800 transition-colors">
           <ArrowLeft size={24} />
