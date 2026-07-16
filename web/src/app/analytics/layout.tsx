@@ -16,13 +16,23 @@ export default function AnalyticsLayout({ children }: { children: React.ReactNod
     { name: 'Factors', path: '/analytics/factors' },
   ];
 
+  const isExportPage = pathname === '/analytics/export';
+
   return (
     <MainLayout activeTab="Analytics">
-      <div className="flex-1 overflow-y-auto bg-slate-900/10 min-h-full">
-        <div className="p-6">
+      <div className="flex-1 overflow-y-auto bg-[#050810] min-h-full">
+        {isExportPage ? (
+          <div className="h-full">
+            {children}
+          </div>
+        ) : (
+          <div className="p-6">
           <div className="flex justify-between items-center mb-6 mt-4">
             <h2 className="text-2xl font-bold text-white">Insights</h2>
-            <button className="w-10 h-10 flex items-center justify-center bg-slate-800/50 rounded-xl hover:bg-slate-700 transition-colors">
+            <button 
+              onClick={() => router.push('/analytics/export')}
+              className="w-10 h-10 flex items-center justify-center bg-slate-800/50 rounded-xl hover:bg-slate-700 transition-colors"
+            >
               <Share2 size={18} className="text-slate-200" />
             </button>
           </div>
@@ -48,6 +58,7 @@ export default function AnalyticsLayout({ children }: { children: React.ReactNod
             {children}
           </div>
         </div>
+        )}
       </div>
     </MainLayout>
   );
