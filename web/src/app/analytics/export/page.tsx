@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Calendar, History, FileText, FileSpreadsheet, CheckCircle2 } from 'lucide-react';
 import { getHistory, getProfile, StressCheckInResponse, ProfileResponse } from '@/lib/api';
+import jsPDF from 'jspdf';
 
 const TIME_PERIODS = [
   { id: '7days', label: 'Last 7 Days', size: '84 KB', icon: Calendar, days: 7 },
@@ -65,27 +66,71 @@ export default function ExportReportScreen() {
         filename = `cortisense_report_${selectedPeriod}.csv`;
         mimeType = "text/csv;charset=utf-8;";
       } else {
-        // Generate simple Text (simulating PDF content for local download)
-        content = `CortiSense Wellness Report\n`;
-        content += `Time Period: ${periodInfo?.label}\n`;
-        content += `Generated: ${new Date().toLocaleString()}\n\n`;
+        // Generate real PDF
+        const doc = new jsPDF();
+        doc.setFont("times", "normal");
+        
+        // Add CortiSense Logo text
+        doc.setFontSize(24);
+        doc.setTextColor(34, 197, 94); // Emerald 500 for the C
+        doc.text("C", 20, 20);
+        
+        doc.setFontSize(20);
+        doc.setTextColor(0, 0, 0);
+        doc.text("ortiSense Wellness Report", 28, 20);
+        
+        doc.setFontSize(12);
+        doc.text(`Time Period: ${periodInfo?.label}`, 20, 30);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 37);
+        
+        let yPos = 50;
         
         if (profileData) {
-          content += `--- User Profile ---\n`;
-          content += `Name: ${profileData.first_name} ${profileData.last_name}\n`;
-          content += `Goal: ${profileData.goal || 'None'}\n\n`;
+          doc.setFontSize(14);
+          doc.setFont("times", "bold");
+          doc.text("User Profile", 20, yPos);
+          yPos += 7;
+          doc.setFont("times", "normal");
+          doc.setFontSize(12);
+          doc.text(`Name: ${profileData.first_name} ${profileData.last_name}`, 20, yPos);
+          yPos += 7;
+          doc.text(`Goal: ${profileData.goal || 'None'}`, 20, yPos);
+          yPos += 12;
         }
         
-        content += `--- Check-in History ---\n`;
-        filteredHistory.forEach(h => {
-          content += `[${new Date(h.timestamp).toLocaleDateString()}] Stress: ${h.stress_level} (Score: ${h.score}) | Escalated: ${h.is_escalated ? 'Yes' : 'No'} | Reasons: ${h.reasons?.join(', ') || 'None'}\n`;
+        doc.setFontSize(14);
+        doc.setFont("times", "bold");
+        doc.text("Check-in History", 20, yPos);
+        yPos += 10;
+        doc.setFont("times", "normal");
+        doc.setFontSize(10);
+        
+        filteredHistory.forEach((h, index) => {
+          if (yPos > 270) {
+            doc.addPage();
+            yPos = 20;
+          }
+          const dateStr = new Date(h.timestamp).toLocaleDateString();
+          const line = `[${dateStr}] Stress: ${h.stress_level} (Score: ${h.score}) | Escalated: ${h.is_escalated ? 'Yes' : 'No'}`;
+          doc.text(line, 20, yPos);
+          yPos += 6;
+          
+          if (h.reasons && h.reasons.length > 0) {
+            doc.text(`Reasons: ${h.reasons.join(', ')}`, 25, yPos);
+            yPos += 6;
+          }
+          yPos += 2;
         });
         
-        filename = `cortisense_report_${selectedPeriod}.txt`; // using txt since real PDF needs binary gen
-        mimeType = "text/plain;charset=utf-8;";
+        doc.save(`cortisense_report_${selectedPeriod}.pdf`);
+        
+        // Simulate a small delay for UX
+        await new Promise(resolve => setTimeout(resolve, 800));
+        setIsGenerating(false);
+        return;
       }
 
-      // Trigger standard browser download
+      // Trigger standard browser download for CSV
       const blob = new Blob([content], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

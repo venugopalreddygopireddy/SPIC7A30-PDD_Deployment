@@ -222,3 +222,8 @@ export const updateProfile = async (profileData: ProfileResponse): Promise<Profi
   const response = await api.put('/users/me/profile', profileData);
   return response.data;
 };
+
+export const deleteAccount = async (): Promise<any> => {
+  const response = await api.delete('/users/me');
+  return response.data;
+};
