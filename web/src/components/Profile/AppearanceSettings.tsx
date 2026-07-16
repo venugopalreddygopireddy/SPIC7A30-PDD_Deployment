@@ -21,15 +21,15 @@ export default function AppearanceSettings({ onBack }: Props) {
     
     // In a real app with Tailwind dark mode configured:
     if (newTheme === 'dark') {
-      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('light-theme');
     } else if (newTheme === 'light') {
-      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light-theme');
     } else {
       // System default logic
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        document.documentElement.classList.add('dark');
+      if (window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.classList.add('light-theme');
       } else {
-        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.remove('light-theme');
       }
     }
   };
