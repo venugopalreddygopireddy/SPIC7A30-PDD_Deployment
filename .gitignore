@@ -30,3 +30,4 @@ build/
 # Test Reports
 reports/
 
+.vercel
