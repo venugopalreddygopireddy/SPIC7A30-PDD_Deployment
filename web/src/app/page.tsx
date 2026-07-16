@@ -19,6 +19,7 @@ import api, {
   completeAction,
   ActionItem
 } from '@/lib/api';
+import { useNotifications, AppNotification } from '@/components/NotificationProvider';
 import axios from 'axios';
 import { 
   Bell, 
@@ -46,7 +47,10 @@ import {
   CheckCircle,
   ArrowLeft,
   AlertTriangle,
-  Info
+  Info,
+  Clock,
+  CheckCircle2,
+  Trash2
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -58,6 +62,20 @@ export default function Dashboard() {
   const [userEmail, setUserEmail] = useState<string>('User');
   const [profileImage, setProfileImage] = useState<string>('');
   const [showAlertScore, setShowAlertScore] = useState<number | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const { notifications, unreadCount, markAllRead, markRead, clearAll } = useNotifications();
+
+  // Helper for relative time
+  const timeAgo = (ts: number): string => {
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+  };
 
   // Analytics States
   const [analyticsTab, setAnalyticsTab] = useState('Trends');
@@ -639,9 +657,65 @@ const renderHistory = () => {
               <p className="text-slate-300 text-[17px] tracking-wide">{greeting}</p>
             </div>
             
-            <button className="relative w-11 h-11 rounded-2xl bg-[#3a355d] flex items-center justify-center text-emerald-400 hover:bg-[#4a457d] transition-colors">
-              <Bell size={20} className="text-emerald-400" fill="#4ade80" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  if (!showNotifications) markAllRead();
+                }}
+                className="relative w-11 h-11 rounded-2xl bg-[#3a355d] flex items-center justify-center text-emerald-400 hover:bg-[#4a457d] transition-colors"
+              >
+                <Bell size={20} className="text-emerald-400" fill="#4ade80" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center border-2 border-[#111116]">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+              
+              {/* Notifications Dropdown */}
+              {showNotifications && (
+                <div className="absolute top-14 right-0 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden z-50 flex flex-col max-h-[400px]">
+                  <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900">
+                    <h3 className="text-white font-bold">Notifications</h3>
+                    {notifications.length > 0 && (
+                      <button onClick={clearAll} className="text-xs text-slate-400 hover:text-rose-400 flex items-center gap-1">
+                        <Trash2 size={12} /> Clear
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-8 text-center text-slate-500 text-sm">
+                        No notifications yet
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-800/50">
+                        {notifications.map(notif => (
+                          <div 
+                            key={notif.id} 
+                            onClick={() => markRead(notif.id)}
+                            className={`p-4 cursor-pointer hover:bg-slate-800/50 transition-colors flex gap-3 ${!notif.read ? 'bg-slate-800/30' : ''}`}
+                          >
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${notif.type === 'reminder' ? 'bg-blue-500/20 text-blue-400' : notif.type === 'completion' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700/50 text-slate-400'}`}>
+                              {notif.type === 'reminder' ? <Clock size={16} /> : notif.type === 'completion' ? <CheckCircle2 size={16} /> : <Bell size={16} />}
+                            </div>
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <h4 className={`text-sm font-semibold ${!notif.read ? 'text-white' : 'text-slate-300'}`}>{notif.title}</h4>
+                                {!notif.read && <div className="w-2 h-2 rounded-full bg-emerald-400"></div>}
+                              </div>
+                              <p className="text-xs text-slate-400 mb-1 leading-relaxed">{notif.body}</p>
+                              <p className="text-[10px] text-slate-500 font-medium">{timeAgo(notif.timestamp)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Stress Orb Container */}
