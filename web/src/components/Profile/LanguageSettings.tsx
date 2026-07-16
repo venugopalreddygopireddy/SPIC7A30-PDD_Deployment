@@ -26,7 +26,16 @@ export default function LanguageSettings({ onBack }: Props) {
   const handleLanguageChange = (id: string) => {
     setLanguage(id);
     localStorage.setItem('language', id);
-    // In a real app, this might trigger an i18n language switch
+    
+    // Set Google Translate cookie
+    const date = new Date();
+    date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
+    const expires = "; expires=" + date.toUTCString();
+    // Google translate uses /en/target_lang
+    document.cookie = `googtrans=/en/${id}${expires}; path=/`;
+    
+    // Reload to apply translation immediately
+    window.location.reload();
   };
 
   const filteredLanguages = LANGUAGES.filter(l => 

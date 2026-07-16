@@ -44,7 +44,28 @@ export default function ProfileScreen() {
     if (email) setUserEmail(email);
 
     loadData();
+
+    // Listen for back button (two-finger swipe)
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.view) {
+        setActiveView(event.state.view);
+      } else {
+        setActiveView('main');
+      }
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, [router]);
+
+  const navigate = (view: typeof activeView) => {
+    window.history.pushState({ view }, '', '');
+    setActiveView(view);
+  };
+  
+  const navigateBack = () => {
+    window.history.back();
+  };
 
   const loadData = async () => {
     try {
@@ -177,11 +198,11 @@ export default function ProfileScreen() {
 
   const fullName = [firstName, lastName].filter(Boolean).join(' ');
 
-  if (activeView === 'appearance') return <AppearanceSettings onBack={() => setActiveView('main')} />;
-  if (activeView === 'language') return <LanguageSettings onBack={() => setActiveView('main')} />;
-  if (activeView === 'notifications') return <NotificationSettings onBack={() => setActiveView('main')} />;
-  if (activeView === 'privacy') return <PrivacySettings onBack={() => setActiveView('main')} />;
-  if (activeView === 'about') return <AboutSettings onBack={() => setActiveView('main')} onNavigateToPrivacy={() => setActiveView('privacy')} />;
+  if (activeView === 'appearance') return <AppearanceSettings onBack={navigateBack} />;
+  if (activeView === 'language') return <LanguageSettings onBack={navigateBack} />;
+  if (activeView === 'notifications') return <NotificationSettings onBack={navigateBack} />;
+  if (activeView === 'privacy') return <PrivacySettings onBack={navigateBack} />;
+  if (activeView === 'about') return <AboutSettings onBack={navigateBack} onNavigateToPrivacy={() => navigate('privacy')} />;
 
   if (isEditing) {
     return (
@@ -395,7 +416,7 @@ export default function ProfileScreen() {
               <ChevronRight className="text-slate-500" size={18} />
             </button>
 
-            <button onClick={() => setActiveView('appearance')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
+            <button onClick={() => navigate('appearance')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
               <div className="flex items-center">
                 <Palette className="text-slate-400 mr-4" size={20} />
                 <span className="text-white font-medium">Appearance</span>
@@ -403,7 +424,7 @@ export default function ProfileScreen() {
               <ChevronRight className="text-slate-500" size={18} />
             </button>
 
-            <button onClick={() => setActiveView('language')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
+            <button onClick={() => navigate('language')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
               <div className="flex items-center">
                 <Globe className="text-slate-400 mr-4" size={20} />
                 <span className="text-white font-medium">Language</span>
@@ -411,7 +432,7 @@ export default function ProfileScreen() {
               <ChevronRight className="text-slate-500" size={18} />
             </button>
 
-            <button onClick={() => setActiveView('notifications')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
+            <button onClick={() => navigate('notifications')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
               <div className="flex items-center">
                 <Bell className="text-slate-400 mr-4" size={20} />
                 <span className="text-white font-medium">Notifications</span>
@@ -419,7 +440,7 @@ export default function ProfileScreen() {
               <ChevronRight className="text-slate-500" size={18} />
             </button>
 
-            <button onClick={() => setActiveView('privacy')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
+            <button onClick={() => navigate('privacy')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
               <div className="flex items-center">
                 <Shield className="text-slate-400 mr-4" size={20} />
                 <span className="text-white font-medium">Privacy & Data</span>
@@ -427,7 +448,7 @@ export default function ProfileScreen() {
               <ChevronRight className="text-slate-500" size={18} />
             </button>
 
-            <button onClick={() => setActiveView('about')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors">
+            <button onClick={() => navigate('about')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors">
               <div className="flex items-center">
                 <HelpCircle className="text-slate-400 mr-4" size={20} />
                 <span className="text-white font-medium">About & Help</span>
