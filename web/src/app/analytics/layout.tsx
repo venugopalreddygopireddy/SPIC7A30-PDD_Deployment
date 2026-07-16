@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Share2, Calendar } from 'lucide-react';
+import { Share2 } from 'lucide-react';
 import MainLayout from '@/components/Layout/MainLayout';
 
 export default function AnalyticsLayout({ children }: { children: React.ReactNode }) {
@@ -29,20 +29,12 @@ export default function AnalyticsLayout({ children }: { children: React.ReactNod
           <div className="p-6">
           <div className="flex justify-between items-center mb-6 mt-4">
             <h2 className="text-2xl font-bold text-white">Insights</h2>
-            <div className="flex gap-3">
-              <button 
-                onClick={() => router.push('/history')}
-                className="w-10 h-10 flex items-center justify-center bg-slate-800/50 rounded-xl hover:bg-slate-700 transition-colors"
-              >
-                <Calendar size={18} className="text-slate-200" />
-              </button>
-              <button 
-                onClick={() => router.push('/analytics/export')}
-                className="w-10 h-10 flex items-center justify-center bg-slate-800/50 rounded-xl hover:bg-slate-700 transition-colors"
-              >
-                <Share2 size={18} className="text-slate-200" />
-              </button>
-            </div>
+            <button 
+              onClick={() => router.push('/analytics/export')}
+              className="w-10 h-10 flex items-center justify-center bg-slate-800/50 rounded-xl hover:bg-slate-700 transition-colors"
+            >
+              <Share2 size={18} className="text-slate-200" />
+            </button>
           </div>
           
           {/* Elegant Sub-tabs */}
