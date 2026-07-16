@@ -45,6 +45,7 @@ body {
 .light-theme {
   filter: invert(1) hue-rotate(180deg);
   background: white; /* Ensure background is solid for inversion */
+  backface-visibility: hidden;
 }
 
 .light-theme img,
