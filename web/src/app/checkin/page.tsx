@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Loader2, CheckCircle2, User, Moon, Zap, Briefcase, Check, BrainCircuit, AlertTriangle, Activity, Activity as RunIcon } from 'lucide-react';
 import { submitCheckIn, CheckInRequest, ActionItem, completeAction, getProfile } from '@/lib/api';
+import { useNotifications } from '@/components/NotificationProvider';
 
 const steps = [
   { id: 1, title: 'Personal Information', icon: <User size={28} className="text-blue-400" /> },
@@ -91,6 +92,7 @@ const CustomSlider = ({ min, max, step = 1, value, onChange, showDots = false }:
 
 export default function CheckInScreen() {
   const router = useRouter();
+  const { addNotification } = useNotifications();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -99,6 +101,30 @@ export default function CheckInScreen() {
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
+
+  // Push a history entry every time step changes so browser back = previous step
+  useEffect(() => {
+    window.history.pushState({ checkinStep: currentStep }, '');
+  }, [currentStep]);
+
+  // Handle two-finger swipe / browser back button: go to previous step
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (isAnalyzing || analysisResult) return; // don't interfere with result screen
+      setCurrentStep(prev => {
+        if (prev > 1) {
+          // Push state again so back still works next time
+          window.history.pushState({ checkinStep: prev - 1 }, '');
+          return prev - 1;
+        } else {
+          router.push('/');
+          return prev;
+        }
+      });
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [router, isAnalyzing, analysisResult]);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -242,6 +268,12 @@ export default function CheckInScreen() {
           setActions(result.actions.filter((a: ActionItem) => !a.is_done));
         }
         setIsAnalyzing(false);
+        // Fire a completion notification
+        addNotification({
+          title: 'Check-in Complete! 🎉',
+          body: `Your stress level is ${result.stress_level} (Score: ${result.score}). Tap to see your recommendations.`,
+          type: 'completion',
+        });
       }, 3500);
 
     } catch (err: any) {

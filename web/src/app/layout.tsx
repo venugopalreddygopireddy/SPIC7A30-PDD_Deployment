@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
+import { NotificationProvider } from "@/components/NotificationProvider";
 import Script from "next/script";
 
 const geistSans = Geist({
@@ -47,7 +48,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeProvider />
-        {children}
+        <NotificationProvider>
+          {children}
+        </NotificationProvider>
         
         {/* Google Translate Integration */}
         <div id="google_translate_element" style={{ display: 'none' }}></div>

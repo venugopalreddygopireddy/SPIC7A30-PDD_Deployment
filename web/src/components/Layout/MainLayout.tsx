@@ -2,10 +2,12 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { Home, BarChart3, PlusCircle, User } from 'lucide-react';
+import { Home, BarChart3, PlusCircle, User, Bell } from 'lucide-react';
+import { useNotifications } from '@/components/NotificationProvider';
 
 export default function MainLayout({ children, activeTab }: { children: React.ReactNode, activeTab: string }) {
   const router = useRouter();
+  const { unreadCount } = useNotifications();
 
   return (
     <div className="min-h-screen bg-[#050810] text-slate-200 font-sans flex overflow-hidden">
@@ -32,6 +34,19 @@ export default function MainLayout({ children, activeTab }: { children: React.Re
             <PlusCircle size={24} />
             <span className="font-bold text-lg">Check-in</span>
           </button>
+
+          {/* Notifications button - desktop */}
+          <button onClick={() => router.push('/notifications')} className={`flex items-center gap-4 p-4 rounded-2xl transition-all ${activeTab === 'Notifications' ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}>
+            <div className="relative">
+              <Bell size={24} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </div>
+            <span className="font-bold text-lg">Notifications</span>
+          </button>
           
           <button onClick={() => router.push('/profile')} className={`flex items-center gap-4 p-4 rounded-2xl transition-all ${activeTab === 'Profile' ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}>
             <User size={24} className={activeTab === 'Profile' ? 'fill-emerald-400/20' : ''} />
@@ -47,7 +62,7 @@ export default function MainLayout({ children, activeTab }: { children: React.Re
         </div>
 
         {/* Mobile Bottom Navigation Bar */}
-        <div className="md:hidden absolute bottom-0 left-0 w-full bg-[#050810] border-t border-slate-800 px-6 py-4 flex justify-between items-center z-50">
+        <div className="md:hidden absolute bottom-0 left-0 w-full bg-[#050810] border-t border-slate-800 px-4 py-4 flex justify-between items-center z-50">
           <button 
             onClick={() => router.push('/')}
             className={`flex flex-col items-center gap-1 ${activeTab === 'Home' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-400'}`}
@@ -70,6 +85,22 @@ export default function MainLayout({ children, activeTab }: { children: React.Re
           >
             <PlusCircle size={24} />
             <span className="text-[10px] font-bold">Check-in</span>
+          </button>
+
+          {/* Notifications - mobile */}
+          <button 
+            onClick={() => router.push('/notifications')}
+            className={`flex flex-col items-center gap-1 ${activeTab === 'Notifications' ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-400'}`}
+          >
+            <div className="relative">
+              <Bell size={24} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-bold">Alerts</span>
           </button>
           
           <button 
