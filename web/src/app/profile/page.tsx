@@ -384,7 +384,7 @@ export default function ProfileScreen() {
               <ChevronRight className="text-slate-500" size={18} />
             </button>
 
-            <button className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
+            <button onClick={() => alert('Appearance settings coming soon!')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
               <div className="flex items-center">
                 <Palette className="text-slate-400 mr-4" size={20} />
                 <span className="text-white font-medium">Appearance</span>
@@ -392,7 +392,7 @@ export default function ProfileScreen() {
               <ChevronRight className="text-slate-500" size={18} />
             </button>
 
-            <button className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
+            <button onClick={() => alert('Language settings coming soon!')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
               <div className="flex items-center">
                 <Globe className="text-slate-400 mr-4" size={20} />
                 <span className="text-white font-medium">Language</span>
@@ -400,7 +400,7 @@ export default function ProfileScreen() {
               <ChevronRight className="text-slate-500" size={18} />
             </button>
 
-            <button className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
+            <button onClick={() => alert('Notification settings coming soon!')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
               <div className="flex items-center">
                 <Bell className="text-slate-400 mr-4" size={20} />
                 <span className="text-white font-medium">Notifications</span>
@@ -408,7 +408,7 @@ export default function ProfileScreen() {
               <ChevronRight className="text-slate-500" size={18} />
             </button>
 
-            <button className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
+            <button onClick={() => alert('Privacy & Data settings coming soon!')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors border-b border-slate-800/50">
               <div className="flex items-center">
                 <Shield className="text-slate-400 mr-4" size={20} />
                 <span className="text-white font-medium">Privacy & Data</span>
@@ -416,7 +416,7 @@ export default function ProfileScreen() {
               <ChevronRight className="text-slate-500" size={18} />
             </button>
 
-            <button className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors">
+            <button onClick={() => alert('About & Help coming soon!')} className="w-full flex items-center justify-between p-5 hover:bg-slate-800/50 transition-colors">
               <div className="flex items-center">
                 <HelpCircle className="text-slate-400 mr-4" size={20} />
                 <span className="text-white font-medium">About & Help</span>
