@@ -58,6 +58,10 @@ export default function SignupScreen() {
       setErrorMessage('Passwords do not match');
       return;
     }
+    if (!email.endsWith('@gmail.com')) {
+      setErrorMessage('Only @gmail.com addresses are allowed');
+      return;
+    }
 
     setLoading(true);
     setErrorMessage(null);

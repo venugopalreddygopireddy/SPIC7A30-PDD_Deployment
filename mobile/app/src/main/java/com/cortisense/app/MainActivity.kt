@@ -1835,6 +1835,8 @@ fun SignupScreen(
                         errorMessage = "Password must be at least 8 characters"
                     } else if (password != confirmPassword) {
                         errorMessage = context.getString(R.string.passwords_do_not_match)
+                    } else if (!email.endsWith("@gmail.com")) {
+                        errorMessage = "Only @gmail.com addresses are allowed"
                     } else {
                         coroutineScope.launch {
                             onCreateAccount(name, email, password, imageBase64)
