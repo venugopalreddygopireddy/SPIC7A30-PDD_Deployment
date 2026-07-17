@@ -19,6 +19,7 @@ from tensorflow.keras.regularizers import l2
 print("Loading dataset...")
 
 df = pd.read_excel("improved_stress_dataset.xlsx")
+print(df.head())
 
 # =========================================================
 # REMOVE EMPTY VALUES
