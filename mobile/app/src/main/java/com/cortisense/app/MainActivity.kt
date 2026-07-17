@@ -220,11 +220,8 @@ class MainActivity : AppCompatActivity() {
             val locale = Locale(language)
             val configuration = LocalConfiguration.current
             configuration.setLocale(locale)
-            val baseContext = LocalContext.current
-            val newContext = baseContext.createConfigurationContext(configuration)
 
             CompositionLocalProvider(
-                LocalContext provides newContext,
                 LocalConfiguration provides configuration
             ) {
                 CortiSenseTheme(darkTheme = isDarkTheme) {
