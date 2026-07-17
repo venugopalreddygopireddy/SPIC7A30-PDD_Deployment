@@ -1766,18 +1766,9 @@ fun SignupScreen(
 
             val allLanguages = listOf(
                 "English" to "en",
-                "తెలుగు" to "te",
                 "हिंदी" to "hi",
-                "Español" to "es",
-                "Français" to "fr",
-                "Deutsch" to "de",
-                "日本語" to "ja",
-                "한국어" to "ko",
-                "中文" to "zh",
-                "Português" to "pt",
-                "Italiano" to "it",
-                "Русский" to "ru",
-                "العربية" to "ar"
+                "தமிழ்" to "ta",
+                "తెలుగు" to "te"
             )
             val selectedLangName = allLanguages.find { it.second == currentLanguage }?.first ?: "English"
 

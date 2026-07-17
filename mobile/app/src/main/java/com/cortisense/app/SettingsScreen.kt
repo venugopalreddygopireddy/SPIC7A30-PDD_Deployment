@@ -284,8 +284,8 @@ fun LanguageDialog(
     val languages = listOf(
         "en" to stringResource(id = R.string.language_english),
         "hi" to stringResource(id = R.string.language_hindi),
-        "te" to stringResource(id = R.string.language_telugu),
-        "ta" to stringResource(id = R.string.language_tamil)
+        "ta" to stringResource(id = R.string.language_tamil),
+        "te" to stringResource(id = R.string.language_telugu)
     )
 
     AlertDialog(
@@ -324,8 +324,8 @@ fun getLanguageName(code: String): String {
     return when(code) {
         "en" -> stringResource(id = R.string.language_english)
         "hi" -> stringResource(id = R.string.language_hindi)
-        "te" -> stringResource(id = R.string.language_telugu)
         "ta" -> stringResource(id = R.string.language_tamil)
+        "te" -> stringResource(id = R.string.language_telugu)
         else -> stringResource(id = R.string.language_english)
     }
 }

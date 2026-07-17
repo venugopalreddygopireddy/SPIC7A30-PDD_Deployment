@@ -24,6 +24,26 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const [language, setLanguage] = useState('en');
+
+  React.useEffect(() => {
+    const savedLang = localStorage.getItem('language');
+    if (savedLang) {
+      setLanguage(savedLang);
+    }
+  }, []);
+
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = e.target.value;
+    setLanguage(id);
+    localStorage.setItem('language', id);
+    const date = new Date();
+    date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
+    document.cookie = `googtrans=/en/${id}; expires=${date.toUTCString()}; path=/`;
+    window.location.reload();
+  };
+
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -95,7 +115,22 @@ export default function SignupScreen() {
       <div className="max-w-md w-full p-8 flex flex-col">
 
         <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
-        <p className="text-sm text-slate-400 mb-8">Sign up to get started</p>
+        <p className="text-sm text-slate-400 mb-6">Sign up to get started</p>
+
+        <div className="mb-6">
+          <label className="text-xs text-slate-400 font-medium ml-1">Language</label>
+          <select 
+            value={language}
+            onChange={handleLanguageChange}
+            className="w-full bg-slate-900/50 border border-slate-700 focus:border-emerald-500 rounded-xl px-4 py-3 outline-none transition-colors text-white mt-1 appearance-none"
+            style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
+          >
+            <option value="en">English</option>
+            <option value="hi">हिंदी (Hindi)</option>
+            <option value="ta">தமிழ் (Tamil)</option>
+            <option value="te">తెలుగు (Telugu)</option>
+          </select>
+        </div>
 
         {/* Profile Image Picker */}
         <div className="flex flex-col items-center mb-8">
