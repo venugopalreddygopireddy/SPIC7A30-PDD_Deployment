@@ -85,6 +85,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.verticalScroll
@@ -214,7 +216,18 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            CortiSenseTheme(darkTheme = isDarkTheme) {
+            // Force Compose context to use the selected language if AppCompatDelegate fails or is delayed
+            val locale = Locale(language)
+            val configuration = LocalConfiguration.current
+            configuration.setLocale(locale)
+            val baseContext = LocalContext.current
+            val newContext = baseContext.createConfigurationContext(configuration)
+
+            CompositionLocalProvider(
+                LocalContext provides newContext,
+                LocalConfiguration provides configuration
+            ) {
+                CortiSenseTheme(darkTheme = isDarkTheme) {
                 // Persistent state management
                 val registeredName by viewModel.userName.collectAsState()
                 val registeredEmail by viewModel.userEmail.collectAsState()
@@ -538,6 +551,7 @@ class MainActivity : AppCompatActivity() {
                     )
                 } // closes Box
             } // closes CortiSenseTheme
+            } // closes CompositionLocalProvider
         } // closes setContent
     } // closes onCreate
 } // closes MainActivity

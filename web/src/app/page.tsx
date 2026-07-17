@@ -101,14 +101,21 @@ export default function Dashboard() {
 
       try {
         setLoading(true);
+        const handleApiError = (err: any, fallback: any) => {
+          if (axios.isAxiosError(err) && err.response?.status === 401) {
+            throw err;
+          }
+          return fallback;
+        };
+
         const [hist, weekly, monthly, trends, factors, summary, profile] = await Promise.all([
-          getHistory().catch(() => []),
-          getWeeklyAnalytics().catch(() => null),
-          getMonthlyAnalytics().catch(() => null),
-          getTrendsAnalytics().catch(() => null),
-          getFactorsAnalytics().catch(() => null),
-          getDashboardSummary().catch(() => null),
-          getProfile().catch(() => null)
+          getHistory().catch((err) => handleApiError(err, [])),
+          getWeeklyAnalytics().catch((err) => handleApiError(err, null)),
+          getMonthlyAnalytics().catch((err) => handleApiError(err, null)),
+          getTrendsAnalytics().catch((err) => handleApiError(err, null)),
+          getFactorsAnalytics().catch((err) => handleApiError(err, null)),
+          getDashboardSummary().catch((err) => handleApiError(err, null)),
+          getProfile().catch((err) => handleApiError(err, null))
         ]);
         setHistory(hist);
         if (weekly) setWeeklyData(weekly);
@@ -122,7 +129,7 @@ export default function Dashboard() {
         console.error("Failed to fetch history:", err);
         if (axios.isAxiosError(err) && err.response?.status === 401) {
           localStorage.removeItem('jwtToken');
-          window.location.href = '/login';
+          window.location.href = '/welcome';
         } else {
           setError("Could not connect to backend");
         }

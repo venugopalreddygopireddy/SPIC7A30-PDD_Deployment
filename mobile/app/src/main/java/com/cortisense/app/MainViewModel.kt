@@ -765,7 +765,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
             preferenceManager.saveJwtToken("")
             preferenceManager.setLoggedIn(false)
+            // Fix: ensure registration flags are cleared so it goes to welcome instead of login
             preferenceManager.saveRegistration("", "", "")
+            // Manually clear using the context dataStore to be absolutely sure
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                preferenceManager.javaClass.getDeclaredMethod("setLoggedIn", Boolean::class.java).invoke(preferenceManager, false)
+                // Let's just use the known way
+            }
             currentUserEmail = ""
             currentUserName = ""
             _userEmail.value = ""
