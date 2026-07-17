@@ -19,6 +19,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('jwtToken');
+        localStorage.removeItem('userEmail');
+        window.location.href = '/welcome';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export interface CheckInRequest {
   age: number;
   gender: string;

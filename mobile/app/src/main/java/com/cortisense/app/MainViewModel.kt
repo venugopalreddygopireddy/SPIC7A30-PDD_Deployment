@@ -750,6 +750,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _profileImageUri.value = response.profile_image ?: ""
                 }
             } catch (e: Exception) {
+                if (e.message?.contains("401") == true || (e is retrofit2.HttpException && e.code() == 401)) {
+                    logout()
+                }
                 e.printStackTrace()
             }
         }
