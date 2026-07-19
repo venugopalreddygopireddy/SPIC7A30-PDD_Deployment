@@ -218,7 +218,7 @@ class MainActivity : AppCompatActivity() {
 
             // Force Compose context to use the selected language if AppCompatDelegate fails or is delayed
             val locale = Locale(language)
-            val configuration = LocalConfiguration.current
+            val configuration = android.content.res.Configuration(LocalConfiguration.current)
             configuration.setLocale(locale)
 
             CompositionLocalProvider(
